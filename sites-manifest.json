@@ -36,12 +36,6 @@
       "type": "folder",
       "path": "sites/trecordof/",
       "children": []
-    },
-    {
-      "id": "g",
-      "name": "g",
-      "type": "website",
-      "path": "sites/g/"
     }
   ]
 }

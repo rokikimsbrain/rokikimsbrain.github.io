@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Create website · Roki Kim's Brain</title>
+    <link rel="stylesheet" href="../css/brain.css" />
+  </head>
+  <body data-create-kind="website">
+    <main class="page">
+      <div class="page-inner">
+        <a class="back" href="../browse/">← Websites already made</a>
+        <h1 class="title">Create a new website</h1>
+
+        <p class="hint">
+          Upload a project into your history. It saves to the live GitHub site so
+          anyone visiting can open it. For an empty home for many sites, use
+          <a data-folder-alt href="folder.html">Create a new folder</a>.
+        </p>
+
+        <p class="note" data-parent-note hidden>
+          This website will go inside
+          <code data-parent-path></code>.
+        </p>
+
+        <p class="note">
+          First time only: <a href="../settings/">Connect GitHub</a>.
+        </p>
+
+        <form class="create-form" data-website-form>
+          <label class="field">
+            <span>Website name</span>
+            <input
+              type="text"
+              name="siteName"
+              data-site-name
+              placeholder="e.g. Lovebug"
+              required
+              autocomplete="off"
+            />
+          </label>
+
+          <div class="drop-zone" data-drop-zone>
+            <p data-drop-hint>
+              Drag your website folder here, or choose one. It should include
+              <code>index.html</code>.
+            </p>
+            <button type="button" data-pick-files>Choose folder</button>
+            <input
+              class="file-input"
+              type="file"
+              data-file-input
+              webkitdirectory
+              multiple
+            />
+            <ul class="preview-list" data-preview-list></ul>
+          </div>
+
+          <button type="submit" data-website-submit>Create website</button>
+        </form>
+
+        <p class="note" data-website-status hidden></p>
+
+        <div class="create-result" data-website-result hidden>
+          <p class="hint" style="text-align: left">
+            Website saved to the live site. Visitors will see it after GitHub Pages
+            updates (usually under a minute).
+          </p>
+          <p class="page-actions">
+            <a data-open-website href="#">Open website</a>
+            <a href="../browse/">Back to folders</a>
+          </p>
+        </div>
+      </div>
+    </main>
+    <script type="module" src="../js/brain.js"></script>
+  </body>
+</html>

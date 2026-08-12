@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Create folder · Roki Kim's Brain</title>
+    <link rel="stylesheet" href="../css/brain.css" />
+  </head>
+  <body data-create-kind="folder">
+    <main class="page">
+      <div class="page-inner">
+        <a class="back" href="../browse/">← Websites already made</a>
+        <h1 class="title">Create a new folder</h1>
+
+        <p class="hint">
+          A folder is a home for websites in your creative history. Creating it
+          saves to the live GitHub site so other people can see it too.
+        </p>
+
+        <p class="note" data-parent-note hidden>
+          New folder will be created inside
+          <code data-parent-path></code>.
+        </p>
+
+        <p class="note">
+          First time only: <a href="../settings/">Connect GitHub</a>.
+        </p>
+
+        <form class="create-form" data-folder-form>
+          <label class="field">
+            <span>Folder name</span>
+            <input
+              type="text"
+              name="folderName"
+              data-folder-name
+              placeholder="e.g. Studio"
+              required
+              autocomplete="off"
+            />
+          </label>
+          <button type="submit" data-folder-submit>Create folder</button>
+        </form>
+
+        <p class="note" data-folder-status hidden></p>
+
+        <div class="create-result" data-folder-result hidden>
+          <p class="hint" style="text-align: left">
+            Folder saved to the live site. Visitors will see it after GitHub Pages
+            updates (usually under a minute).
+          </p>
+          <p class="page-actions">
+            <a data-open-folder href="#">Open folder</a>
+            <a href="../browse/">Back to folders</a>
+          </p>
+        </div>
+      </div>
+    </main>
+    <script type="module" src="../js/brain.js"></script>
+  </body>
+</html>

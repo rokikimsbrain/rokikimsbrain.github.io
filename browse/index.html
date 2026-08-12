@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Folders · Roki Kim's Brain</title>
+    <link rel="stylesheet" href="../css/brain.css" />
+  </head>
+  <body>
+    <main class="page">
+      <div class="page-inner page-inner-wide">
+        <a class="back" href="../menu/">← Menu</a>
+        <h1 class="title">Websites already made</h1>
+        <p class="hint">
+          These are container folders. Websites live inside them. Drag a folder
+          or website to the trash to delete it. To try upload, use the
+          <code>sample-test-website</code> folder on your Desktop project.
+        </p>
+        <p class="page-actions">
+          <a data-create-folder href="../add/folder.html?parent=sites/">Create a new folder</a>
+          <a data-create-website href="../add/?parent=sites/">Create a new website</a>
+          <a data-settings-link href="../settings/">Connect GitHub</a>
+        </p>
+        <div
+          class="tree"
+          data-folder-browser
+          data-view="browse"
+        >
+          <p class="empty">Loading…</p>
+        </div>
+      </div>
+    </main>
+    <script type="module" src="../js/brain.js"></script>
+  </body>
+</html>

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GitHub settings · Roki Kim's Brain</title>
+    <link rel="stylesheet" href="../css/brain.css" />
+  </head>
+  <body>
+    <main class="page">
+      <div class="page-inner">
+        <a class="back" href="../browse/">← Websites already made</a>
+        <h1 class="title">Connect GitHub (one time)</h1>
+        <p class="hint">
+          This lets <em>you</em> add and delete folders/websites on the live site
+          so everyone else can see your creative history. Visitors never need this —
+          they only view. Your token stays in this browser only.
+        </p>
+
+        <form class="create-form" data-settings-form>
+          <label class="field">
+            <span>GitHub username</span>
+            <input type="text" name="owner" data-owner required autocomplete="username" />
+          </label>
+          <label class="field">
+            <span>Repository name</span>
+            <input type="text" name="repo" data-repo required placeholder="roki-kims-brain" />
+          </label>
+          <label class="field">
+            <span>Branch</span>
+            <input type="text" name="branch" data-branch value="main" required />
+          </label>
+          <label class="field">
+            <span>Personal access token</span>
+            <input
+              type="password"
+              name="token"
+              data-token
+              required
+              autocomplete="off"
+              placeholder="github_pat_… or ghp_…"
+            />
+          </label>
+          <p class="hint" style="text-align: left; margin: 0">
+            GitHub → Settings → Developer settings → Personal access tokens.
+            Use a token that can read &amp; write Contents on this repo.
+          </p>
+          <button type="submit">Save connection</button>
+          <button type="button" data-clear-settings>Clear saved connection</button>
+        </form>
+
+        <p class="note" data-settings-status hidden></p>
+      </div>
+    </main>
+    <script type="module">
+      import {
+        clearGithubConfig,
+        getGithubConfig,
+        guessGithubFromLocation,
+        saveGithubConfig,
+      } from "../js/github-publish.js";
+
+      const form = document.querySelector("[data-settings-form]");
+      const status = document.querySelector("[data-settings-status]");
+      const guessed = guessGithubFromLocation();
+      const saved = getGithubConfig();
+
+      form.owner.value = saved?.owner || guessed.owner || "rokikimsbrain";
+      form.repo.value = saved?.repo || guessed.repo || "rokikimsbrain.github.io";
+      form.branch.value = saved?.branch || guessed.branch || "main";
+      if (saved?.token) form.token.value = saved.token;
+
+      if (!form.owner.value) form.owner.placeholder = "rokikimsbrain";
+      if (!form.repo.value) form.repo.placeholder = "rokikimsbrain.github.io";
+
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        saveGithubConfig({
+          owner: form.owner.value.trim(),
+          repo: form.repo.value.trim(),
+          branch: form.branch.value.trim() || "main",
+          token: form.token.value.trim(),
+        });
+        status.hidden = false;
+        status.textContent =
+          "Connected. New folders and websites you create will appear on the live site for everyone.";
+      });
+
+      document.querySelector("[data-clear-settings]").addEventListener("click", () => {
+        clearGithubConfig();
+        form.token.value = "";
+        status.hidden = false;
+        status.textContent = "Cleared.";
+      });
+    </script>
+  </body>
+</html>

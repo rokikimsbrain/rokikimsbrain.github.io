@@ -1,0 +1,41 @@
+{
+  "title": "Roki Kim's Brain",
+  "folders": [
+    {
+      "id": "oxxy444",
+      "name": "Oxxy444",
+      "type": "folder",
+      "path": "sites/oxxy444/",
+      "children": []
+    },
+    {
+      "id": "whenimgonelookformeinthesouth",
+      "name": "Whenimgonelookformeinthesouth",
+      "type": "folder",
+      "path": "sites/whenimgonelookformeinthesouth/",
+      "children": [
+        {
+          "id": "78",
+          "name": "78!",
+          "type": "folder",
+          "path": "sites/whenimgonelookformeinthesouth/78!/",
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": "546979a9298010",
+      "name": "546979a9298010",
+      "type": "folder",
+      "path": "sites/546979a9298010/",
+      "children": []
+    },
+    {
+      "id": "trecordof",
+      "name": "Trecordof",
+      "type": "folder",
+      "path": "sites/trecordof/",
+      "children": []
+    }
+  ]
+}

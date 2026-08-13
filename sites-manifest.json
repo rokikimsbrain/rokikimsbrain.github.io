@@ -98,7 +98,14 @@
           "name": "The questions shouldn’t explain the piece the question should explain the viewer (project)",
           "type": "folder",
           "path": "sites/Roki-Jongha-Kim/The-questions-shouldnt-explain-the-piece-the-question-should-explain-the-viewer-project/",
-          "children": []
+          "children": [
+            {
+              "id": "when-did-it-change-series-1",
+              "name": "When did it change? (Series 1)",
+              "type": "website",
+              "path": "sites/Roki-Jongha-Kim/The-questions-shouldnt-explain-the-piece-the-question-should-explain-the-viewer-project/when-did-it-change-series-1/"
+            }
+          ]
         }
       ]
     }

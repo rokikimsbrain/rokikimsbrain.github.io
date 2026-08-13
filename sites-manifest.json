@@ -26,7 +26,14 @@
           "name": "Oxxy n Friends websites",
           "type": "folder",
           "path": "sites/oxxy444/Oxxy-n-Friends-websites/",
-          "children": []
+          "children": [
+            {
+              "id": "oxxy-n-friends-promotion-site-3",
+              "name": "Oxxy n Friends Promotion site 3",
+              "type": "website",
+              "path": "sites/oxxy444/Oxxy-n-Friends-websites/oxxy-n-friends-promotion-site-3/"
+            }
+          ]
         }
       ]
     },

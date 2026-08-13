@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>oxxy444 n friends</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: black;
+      height: 100%;
+      overflow: hidden;
+    }
+    #wrapper {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+    video, canvas {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+    }
+    canvas {
+      z-index: 10;
+      pointer-events: none;
+    }
+    #snapBtn {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      background: rgba(255, 255, 255, 0.07);
+      color: white;
+      font: 14px sans-serif;
+      padding: 8px 14px;
+      border: none;
+      border-radius: 8px;
+      z-index: 20;
+      cursor: pointer;
+      opacity: 0.8;
+      transition: opacity 0.2s ease;
+    }
+    #snapBtn:hover {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div id="wrapper">
+    <video id="video" autoplay muted playsinline></video>
+    <canvas id="canvas"></canvas>
+    <button id="snapBtn">save snapshot</button>
+  </div>
+
+  <!-- TensorFlow FaceMesh -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.9.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/facemesh@0.0.4"></script>
+
+  <!-- MediaPipe Hands -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+
+  <script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const snapBtn = document.getElementById('snapBtn');
+
+    function resizeCanvas() {
+      canvas.width = canvas.clientWidth;
+      canvas.height = canvas.clientHeight;
+    }
+
+    window.addEventListener("resize", resizeCanvas);
+    resizeCanvas();
+
+    function angleBetween(p1, p2) {
+      return Math.atan2(p2[1] - p1[1], p2[0] - p1[0]);
+    }
+
+    async function setupFaceTracking() {
+      const model = await facemesh.load();
+
+      async function detectFace() {
+        const predictions = await model.estimateFaces(video);
+        if (predictions.length > 0) {
+          const keypoints = predictions[0].scaledMesh;
+          const charMap = [
+            { char: "o", index: 70 },
+            { char: "x", index: 63 },
+            { char: "x", index: 105 },
+            { char: "y", index: 66 },
+            { char: "4", index: 107 },
+            { char: "4", index: 336 },
+            { char: "4", index: 300 }
+          ];
+
+          ctx.fillStyle = "white";
+          ctx.font = "bold 28px sans-serif";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+
+          for (let i = 0; i < charMap.length; i++) {
+            const { char, index } = charMap[i];
+            let [x, y] = keypoints[index];
+            x = x / video.videoWidth * canvas.width;
+            y = y / video.videoHeight * canvas.height;
+
+            const prev = i > 0 ? keypoints[charMap[i - 1].index] : [x - 10, y];
+            const next = i < charMap.length - 1 ? keypoints[charMap[i + 1].index] : [x + 10, y];
+            const angle = angleBetween(prev, next);
+
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(angle);
+            ctx.fillText(char, 0, 0);
+            ctx.restore();
+          }
+        }
+
+        requestAnimationFrame(detectFace);
+      }
+
+      detectFace();
+    }
+
+    function setupHandTracking() {
+      const hands = new Hands({
+        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+      });
+
+      hands.setOptions({
+        maxNumHands: 2,
+        modelComplexity: 1,
+        minDetectionConfidence: 0.7,
+        minTrackingConfidence: 0.7
+      });
+
+      hands.onResults(results => {
+        // Leave face drawings, don't clear canvas here
+
+        const labels = {
+          Left: "oxxy",   // thumb to pinky
+          Right: "frnds"  // thumb to pinky
+        };
+
+        results.multiHandLandmarks.forEach((landmarks, i) => {
+          const handLabel = results.multiHandedness[i].label;
+          const text = labels[handLabel] || "";
+          const indices = [4, 8, 12, 16, 20]; // thumb to pinky
+
+          ctx.fillStyle = "white";
+          ctx.font = "bold 22px sans-serif";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+
+          for (let j = 0; j < indices.length && j < text.length; j++) {
+            const lm = landmarks[indices[j]];
+            const x = lm.x * canvas.width;
+            const y = lm.y * canvas.height;
+
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.fillText(text[j], 0, 0);
+            ctx.restore();
+          }
+        });
+      });
+
+      const camera = new Camera(video, {
+        onFrame: async () => {
+          await hands.send({ image: video });
+        },
+        width: 640,
+        height: 480
+      });
+      camera.start();
+    }
+
+    function setupSnapshotButton() {
+      snapBtn.addEventListener("click", () => {
+        const snapshotCanvas = document.createElement("canvas");
+        snapshotCanvas.width = canvas.width;
+        snapshotCanvas.height = canvas.height;
+        const snapCtx = snapshotCanvas.getContext("2d");
+
+        snapCtx.drawImage(video, 0, 0, snapshotCanvas.width, snapshotCanvas.height);
+        snapCtx.drawImage(canvas, 0, 0); // overlay face+hand text
+
+        const link = document.createElement("a");
+        link.download = "snapshot.png";
+        link.href = snapshotCanvas.toDataURL("image/png");
+        link.click();
+      });
+    }
+
+    async function startApp() {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      video.srcObject = stream;
+      await new Promise(resolve => video.onloadedmetadata = resolve);
+      video.play();
+
+      setupSnapshotButton();
+      setupFaceTracking();
+      setupHandTracking();
+    }
+
+    startApp();
+  </script>
+</body>
+</html>

@@ -1,0 +1,405 @@
+:root {
+  --ink: #06141f;
+  --fog: #e8eef2;
+  --accent: #3dffa8;
+  --index: #3dffa8;
+  --middle: #ffb703;
+  --ring: #4cc9f0;
+  --pinky: #f72585;
+  --muted: rgba(232, 238, 242, 0.55);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: #000;
+  color: var(--fog);
+  font-family: Helvetica, Arial, sans-serif;
+}
+
+body {
+  overflow: hidden;
+}
+
+.stage {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  background: #000;
+}
+
+#camera,
+#overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+}
+
+#camera {
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+#camera.live {
+  opacity: 1;
+}
+
+#overlay {
+  pointer-events: none;
+}
+
+.flash {
+  position: absolute;
+  left: 50%;
+  bottom: 12%;
+  z-index: 3;
+  max-width: min(90vw, 40rem);
+  padding: 0 1rem;
+  transform: translateX(-50%) translateY(8px);
+  text-align: center;
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: clamp(1.4rem, 4vw, 2.6rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  color: var(--fog);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease;
+}
+
+.flash.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.flash.short {
+  bottom: 50%;
+  font-size: clamp(6rem, 22vw, 14rem);
+  letter-spacing: -0.06em;
+}
+
+.start {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 4;
+  transform: translate(-50%, -50%);
+  appearance: none;
+  border: 0;
+  margin: 0;
+  padding: 12px 16px;
+  background: transparent;
+  color: var(--index);
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: clamp(2rem, 7vw, 4rem);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  cursor: pointer;
+  animation: color-pulse 1.8s ease-in-out infinite;
+}
+
+.start:hover {
+  animation: color-pulse 0.9s ease-in-out infinite;
+  filter: brightness(1.12);
+}
+
+.start:disabled {
+  opacity: 0.55;
+  cursor: default;
+  animation: none;
+  color: var(--muted);
+  transform: translate(-50%, -50%);
+}
+
+.start[hidden] {
+  display: none;
+}
+
+@keyframes color-pulse {
+  0%,
+  100% {
+    color: var(--index);
+    transform: translate(-50%, -50%) scale(1);
+  }
+  25% {
+    color: var(--middle);
+    transform: translate(-50%, -50%) scale(1.06);
+  }
+  50% {
+    color: var(--ring);
+    transform: translate(-50%, -50%) scale(1);
+  }
+  75% {
+    color: var(--pinky);
+    transform: translate(-50%, -50%) scale(1.06);
+  }
+}
+
+@keyframes color-cycle {
+  0%,
+  100% {
+    color: var(--index);
+  }
+  25% {
+    color: var(--middle);
+  }
+  50% {
+    color: var(--ring);
+  }
+  75% {
+    color: var(--pinky);
+  }
+}
+
+@keyframes soft-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.edit-toggle {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 5;
+  appearance: none;
+  border: 0;
+  margin: 0;
+  padding: 8px 4px;
+  background: transparent;
+  color: var(--index);
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  cursor: pointer;
+  animation:
+    color-cycle 2.4s ease-in-out infinite,
+    soft-pulse 2.4s ease-in-out infinite;
+}
+
+.edit-toggle:hover {
+  filter: brightness(1.15);
+  animation-duration: 1s, 1s;
+}
+
+.editor {
+  position: absolute;
+  top: 56px;
+  right: 16px;
+  z-index: 5;
+  width: min(320px, calc(100vw - 32px));
+  max-height: calc(100vh - 80px);
+  overflow: auto;
+  padding: 8px 4px 12px;
+  background: transparent;
+  border: 0;
+}
+
+.editor[hidden] {
+  display: none;
+}
+
+.editor-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.editor-title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  animation: color-cycle 2.4s ease-in-out infinite;
+}
+
+.editor-close,
+.editor-actions button {
+  appearance: none;
+  border: 0;
+  margin: 0;
+  padding: 4px 2px;
+  background: transparent;
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  cursor: pointer;
+}
+
+.editor-close {
+  color: var(--pinky);
+  animation: soft-pulse 2.2s ease-in-out infinite;
+}
+
+.editor-close:hover {
+  filter: brightness(1.2);
+}
+
+.editor-form {
+  display: grid;
+  gap: 18px;
+}
+
+.editor-form fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.editor-form legend {
+  margin: 0 0 6px;
+  padding: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.editor-form label {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  grid-template-areas:
+    "name voice"
+    "name input";
+  column-gap: 10px;
+  row-gap: 2px;
+  align-items: center;
+  font-size: 0.8rem;
+}
+
+.editor-form .finger-name {
+  grid-area: name;
+  align-self: center;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.editor-form .voice-name {
+  grid-area: voice;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.editor-form label input {
+  grid-area: input;
+  width: 100%;
+  border: 0;
+  border-bottom: 2px solid currentColor;
+  border-radius: 0;
+  margin: 0;
+  padding: 6px 0;
+  background: transparent;
+  color: var(--fog);
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.editor-form label input:focus {
+  outline: none;
+  filter: brightness(1.15);
+}
+
+.finger-index,
+.finger-index .finger-name,
+.finger-index .voice-name,
+.finger-index input {
+  color: var(--index);
+}
+
+.finger-middle,
+.finger-middle .finger-name,
+.finger-middle .voice-name,
+.finger-middle input {
+  color: var(--middle);
+}
+
+.finger-ring,
+.finger-ring .finger-name,
+.finger-ring .voice-name,
+.finger-ring input {
+  color: var(--ring);
+}
+
+.finger-pinky,
+.finger-pinky .finger-name,
+.finger-pinky .voice-name,
+.finger-pinky input {
+  color: var(--pinky);
+}
+
+.editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 16px;
+  margin-top: 4px;
+}
+
+.action-reset {
+  color: var(--ring);
+  animation: soft-pulse 2.6s ease-in-out infinite;
+}
+
+.action-save {
+  color: var(--index);
+  animation:
+    color-cycle 2s ease-in-out infinite,
+    soft-pulse 2s ease-in-out infinite;
+}
+
+.action-reset:hover,
+.action-save:hover {
+  filter: brightness(1.2);
+}
+
+.status {
+  position: absolute;
+  left: 50%;
+  bottom: 24px;
+  z-index: 4;
+  transform: translateX(-50%);
+  margin: 0;
+  max-width: 90vw;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--middle);
+  text-align: center;
+  animation: soft-pulse 1.6s ease-in-out infinite;
+}
+
+.status[hidden] {
+  display: none;
+}

@@ -12,7 +12,14 @@
           "name": "oxihiscontorium",
           "type": "folder",
           "path": "sites/oxxy444/oxihiscontorium/",
-          "children": []
+          "children": [
+            {
+              "id": "new-jeans-i-love-bunnies-how-to-website",
+              "name": "New Jeans I love Bunnies How to Website",
+              "type": "website",
+              "path": "sites/oxxy444/oxihiscontorium/new-jeans-i-love-bunnies-how-to-website/"
+            }
+          ]
         }
       ]
     },

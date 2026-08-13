@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Hand Letters</title>
+    <meta
+      name="description"
+      content="Pinch a finger to your thumb to speak its phrase."
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="stage">
+      <video id="camera" playsinline autoplay muted></video>
+      <canvas id="overlay" aria-hidden="true"></canvas>
+
+      <div class="flash" id="flash" aria-live="polite"></div>
+
+      <button type="button" class="start" id="start">Start</button>
+
+      <button type="button" class="edit-toggle" id="editToggle" aria-expanded="false">
+        Edit
+      </button>
+
+      <aside class="editor" id="editor" hidden>
+        <header class="editor-head">
+          <p class="editor-title">Finger phrases</p>
+          <button type="button" class="editor-close" id="editClose">Close</button>
+        </header>
+        <form class="editor-form" id="phraseForm">
+          <fieldset>
+            <legend>Left hand</legend>
+            <label class="finger-index">
+              <span class="finger-name">Index</span>
+              <span class="voice-name">Adult man</span>
+              <input name="Left-index" type="text" autocomplete="off" />
+            </label>
+            <label class="finger-middle">
+              <span class="finger-name">Middle</span>
+              <span class="voice-name">Adult woman</span>
+              <input name="Left-middle" type="text" autocomplete="off" />
+            </label>
+            <label class="finger-ring">
+              <span class="finger-name">Ring</span>
+              <span class="voice-name">Older man</span>
+              <input name="Left-ring" type="text" autocomplete="off" />
+            </label>
+            <label class="finger-pinky">
+              <span class="finger-name">Pinky</span>
+              <span class="voice-name">Young woman</span>
+              <input name="Left-pinky" type="text" autocomplete="off" />
+            </label>
+          </fieldset>
+          <fieldset>
+            <legend>Right hand</legend>
+            <label class="finger-index">
+              <span class="finger-name">Index</span>
+              <span class="voice-name">Young man</span>
+              <input name="Right-index" type="text" autocomplete="off" />
+            </label>
+            <label class="finger-middle">
+              <span class="finger-name">Middle</span>
+              <span class="voice-name">Warm woman</span>
+              <input name="Right-middle" type="text" autocomplete="off" />
+            </label>
+            <label class="finger-ring">
+              <span class="finger-name">Ring</span>
+              <span class="voice-name">Deep man</span>
+              <input name="Right-ring" type="text" autocomplete="off" />
+            </label>
+            <label class="finger-pinky">
+              <span class="finger-name">Pinky</span>
+              <span class="voice-name">Older woman</span>
+              <input name="Right-pinky" type="text" autocomplete="off" />
+            </label>
+          </fieldset>
+          <div class="editor-actions">
+            <button type="button" class="action-reset" id="resetPhrases">Reset</button>
+            <button type="submit" class="action-save">Save</button>
+          </div>
+        </form>
+      </aside>
+
+      <p class="status" id="status" hidden></p>
+    </div>
+
+    <!-- Classic script so speech engine is available as window.SamJs -->
+    <script src="https://cdn.jsdelivr.net/npm/sam-js@0.3.1/dist/samjs.min.js"></script>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

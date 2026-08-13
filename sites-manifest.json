@@ -34,6 +34,13 @@
               "path": "sites/oxxy444/Oxxy-n-Friends-websites/oxxy-n-friends-promotion-site-3/"
             }
           ]
+        },
+        {
+          "id": "early-days",
+          "name": "Early days",
+          "type": "folder",
+          "path": "sites/oxxy444/Early-days/",
+          "children": []
         }
       ]
     },

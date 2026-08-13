@@ -6,7 +6,15 @@
       "name": "Oxxy444",
       "type": "folder",
       "path": "sites/oxxy444/",
-      "children": []
+      "children": [
+        {
+          "id": "oxihiscontorium",
+          "name": "oxihiscontorium",
+          "type": "folder",
+          "path": "sites/oxxy444/oxihiscontorium/",
+          "children": []
+        }
+      ]
     },
     {
       "id": "whenimgonelookformeinthesouth",

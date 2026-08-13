@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>When Did It Change?</title>
+  <style>
+    /*
+      Full-viewport color field.
+      No UI, no borders, no scrollbars — just light filling the window.
+    */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000; /* brief flash-prevention before JS paints the first color */
+    }
+
+    #field {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      /* solid color only — never a gradient */
+      background-color: rgb(0, 0, 0);
+    }
+
+    /* Cursor is hidden via the .idle class after a few seconds of no input */
+    body.idle,
+    body.idle * {
+      cursor: none !important;
+    }
+  </style>
+</head>
+<body>
+  <div id="field" aria-hidden="true"></div>
+
+  <script>
+    // ============================================================
+    //  WHEN DID IT CHANGE?
+    //  Soft blue-gray → extremely subtle green-gray
+    //
+    //  HOW TO EXPERIMENT (look for the ★ markers below):
+    //    ★ 1. Duration of the transition
+    //    ★ 2. Start / end colors
+    //    ★ 3. Sound settings
+    // ============================================================
+
+
+    // ------------------------------------------------------------
+    // ★ 1. DURATION
+    //
+    // How long the color takes to travel from start → end.
+    // 300000 milliseconds = 5 minutes.
+    // Try 60000 (1 min) while testing; put it back to 300000 for the real piece.
+    // ------------------------------------------------------------
+    const duration = 300000;
+
+
+    // ------------------------------------------------------------
+    // ★ 2. START / END COLORS
+    //
+    // Colors are stored as { r, g, b } with each channel 0–255.
+    // Differences are deliberately tiny so the shift stays near
+    // the edge of conscious awareness.
+    // ------------------------------------------------------------
+    const startColor = { r: 148, g: 154, b: 162 }; // soft, cool gray with a faint blue cast
+    const endColor   = { r: 148, g: 158, b: 154 }; // nearly the same lightness, nudged toward green-gray
+
+
+    // ------------------------------------------------------------
+    // ★ 3. SOUND SETTINGS
+    //
+    // Extremely quiet continuous drones. No rhythm, no melody.
+    // masterGain: overall loudness (keep very low — 0.015 is already audible)
+    // oscillators: soft sine/triangle tones that beat slowly against each other
+    // ------------------------------------------------------------
+    const SOUND = {
+      masterGain: 0.012,
+      // Very slow fade-in after the viewer’s first click/touch/key
+      fadeInSeconds: 12,
+      // Extremely slow amplitude breathing (period in seconds)
+      breathPeriodSeconds: 47,
+      breathDepth: 0.18, // how much the volume gently rises/falls (0–1)
+      // Soft clustered tones (Hz). Close frequencies create slow beating.
+      oscillators: [
+        { frequency: 55.0,  type: "sine",     gain: 0.45 },
+        { frequency: 55.3,  type: "sine",     gain: 0.35 }, // barely detuned → slow beat
+        { frequency: 82.4,  type: "triangle", gain: 0.18 },
+        { frequency: 110.1, type: "sine",     gain: 0.12 },
+        { frequency: 164.7, type: "sine",     gain: 0.06 },
+      ],
+      // Low-pass filter keeps everything muffled / distant
+      filterFrequency: 420,
+      filterQ: 0.5,
+    };
+
+
+    // ============================================================
+    // Below this line: the engine. You usually won’t need to edit it.
+    // ============================================================
+
+
+    const field = document.getElementById("field");
+
+
+    // --- Perceptual color math (OKLab) ---------------------------
+    //
+    // We do NOT lerp RGB directly. That can look uneven or “jump”
+    // in the middle. Instead we convert to OKLab (a perceptually
+    // uniform color space), interpolate there, then convert back.
+    // Result: a mathematically smooth, continuous shift of light.
+
+    function srgbChannelToLinear(c) {
+      const x = c / 255;
+      return x <= 0.04045 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
+    }
+
+    function linearToSrgbChannel(c) {
+      const x = c <= 0.0031308
+        ? 12.92 * c
+        : 1.055 * Math.pow(c, 1 / 2.4) - 0.055;
+      return Math.min(255, Math.max(0, Math.round(x * 255)));
+    }
+
+    function rgbToOklab(rgb) {
+      const r = srgbChannelToLinear(rgb.r);
+      const g = srgbChannelToLinear(rgb.g);
+      const b = srgbChannelToLinear(rgb.b);
+
+      const l = 0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b;
+      const m = 0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b;
+      const s = 0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b;
+
+      const l_ = Math.cbrt(l);
+      const m_ = Math.cbrt(m);
+      const s_ = Math.cbrt(s);
+
+      return {
+        L: 0.2104542553 * l_ + 0.7936177850 * m_ - 0.0040720468 * s_,
+        a: 1.9779984951 * l_ - 2.4285922050 * m_ + 0.4505937099 * s_,
+        b: 0.0259040371 * l_ + 0.7827717662 * m_ - 0.8086757660 * s_,
+      };
+    }
+
+    function oklabToRgb(lab) {
+      const l_ = lab.L + 0.3963377774 * lab.a + 0.2158037573 * lab.b;
+      const m_ = lab.L - 0.1055613458 * lab.a - 0.0638541728 * lab.b;
+      const s_ = lab.L - 0.0894841775 * lab.a - 1.2914855480 * lab.b;
+
+      const l = l_ * l_ * l_;
+      const m = m_ * m_ * m_;
+      const s = s_ * s_ * s_;
+
+      const r = +4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s;
+      const g = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s;
+      const b = -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s;
+
+      return {
+        r: linearToSrgbChannel(r),
+        g: linearToSrgbChannel(g),
+        b: linearToSrgbChannel(b),
+      };
+    }
+
+    function lerp(a, b, t) {
+      return a + (b - a) * t;
+    }
+
+    // Smoothstep easing: starts and ends almost still, with no
+    // sudden acceleration — helps hide the sense of “animation.”
+    function smoothstep(t) {
+      const x = Math.min(1, Math.max(0, t));
+      return x * x * (3 - 2 * x);
+    }
+
+    function interpolateColor(startRgb, endRgb, t) {
+      const start = rgbToOklab(startRgb);
+      const end = rgbToOklab(endRgb);
+      const lab = {
+        L: lerp(start.L, end.L, t),
+        a: lerp(start.a, end.a, t),
+        b: lerp(start.b, end.b, t),
+      };
+      return oklabToRgb(lab);
+    }
+
+    function rgbToCss(rgb) {
+      return "rgb(" + rgb.r + ", " + rgb.g + ", " + rgb.b + ")";
+    }
+
+
+    // --- Paint the field ----------------------------------------
+
+    function setFieldColor(rgb) {
+      field.style.backgroundColor = rgbToCss(rgb);
+    }
+
+    // Paint the starting color immediately so the page never flash-blacks
+    setFieldColor(startColor);
+
+
+    // --- Color transition via requestAnimationFrame -------------
+    //
+    // One continuous, clock-based progress value from 0 → 1 over
+    // `duration` ms. No keyframes, no CSS transitions, no steps.
+
+    let startTime = null;
+    let finished = false;
+
+    // Cache last painted integer RGB so we only touch the DOM
+    // when a channel actually changes (avoids micro-flicker).
+    let lastPainted = { r: -1, g: -1, b: -1 };
+
+    function tick(now) {
+      if (startTime === null) startTime = now;
+
+      const elapsed = now - startTime;
+      const linearT = Math.min(1, elapsed / duration);
+      const t = smoothstep(linearT);
+
+      const rgb = interpolateColor(startColor, endColor, t);
+
+      if (
+        rgb.r !== lastPainted.r ||
+        rgb.g !== lastPainted.g ||
+        rgb.b !== lastPainted.b
+      ) {
+        setFieldColor(rgb);
+        lastPainted = rgb;
+      }
+
+      if (linearT < 1) {
+        requestAnimationFrame(tick);
+      } else if (!finished) {
+        finished = true;
+        // Hold the final color indefinitely — no loop, no reverse.
+        setFieldColor(endColor);
+      }
+    }
+
+    requestAnimationFrame(tick);
+
+
+    // --- Hide cursor after inactivity ---------------------------
+
+    const IDLE_MS = 3000; // hide cursor after 3 seconds of no input
+    let idleTimer = null;
+
+    function markActive() {
+      document.body.classList.remove("idle");
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(function () {
+        document.body.classList.add("idle");
+      }, IDLE_MS);
+    }
+
+    ["mousemove", "mousedown", "keydown", "touchstart", "pointerdown"].forEach(
+      function (evt) {
+        window.addEventListener(evt, markActive, { passive: true });
+      }
+    );
+    markActive(); // start the idle countdown on load
+
+
+    // --- Ambient sound (Web Audio API) --------------------------
+    //
+    // Starts only after the first click / touch / key press
+    // (browsers block autoplay). No on-screen instructions.
+
+    let audioStarted = false;
+    let audioCtx = null;
+
+    function startSound() {
+      if (audioStarted) return;
+      audioStarted = true;
+
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+
+      audioCtx = new AudioContext();
+      if (audioCtx.state === "suspended") {
+        audioCtx.resume();
+      }
+
+      const master = audioCtx.createGain();
+      master.gain.value = 0; // fade in from silence
+      master.connect(audioCtx.destination);
+
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = "lowpass";
+      filter.frequency.value = SOUND.filterFrequency;
+      filter.Q.value = SOUND.filterQ;
+      filter.connect(master);
+
+      // Extremely slow “breathing” of overall loudness — no pulse feel
+      const breath = audioCtx.createGain();
+      breath.gain.value = 1;
+      breath.connect(filter);
+
+      const now = audioCtx.currentTime;
+
+      // Fade master in gently
+      master.gain.setValueAtTime(0, now);
+      master.gain.linearRampToValueAtTime(
+        SOUND.masterGain,
+        now + SOUND.fadeInSeconds
+      );
+
+      // Continuous slow LFO on breath gain using an oscillator → gain
+      // Depth is small so it never feels like a rhythm.
+      const lfo = audioCtx.createOscillator();
+      lfo.type = "sine";
+      lfo.frequency.value = 1 / SOUND.breathPeriodSeconds;
+
+      const lfoGain = audioCtx.createGain();
+      lfoGain.gain.value = SOUND.breathDepth;
+      lfo.connect(lfoGain);
+      lfoGain.connect(breath.gain);
+      lfo.start(now);
+
+      // Layer soft oscillators into the breath bus
+      SOUND.oscillators.forEach(function (spec) {
+        const osc = audioCtx.createOscillator();
+        osc.type = spec.type;
+        osc.frequency.value = spec.frequency;
+
+        const g = audioCtx.createGain();
+        g.gain.value = spec.gain;
+
+        osc.connect(g);
+        g.connect(breath);
+        osc.start(now);
+      });
+
+      // Tiny, glacial drift of the filter cutoff — almost imperceptible
+      // evolution over many minutes, so the soundscape never feels static
+      // or “eventful.”
+      filter.frequency.setValueAtTime(SOUND.filterFrequency, now);
+      filter.frequency.linearRampToValueAtTime(
+        SOUND.filterFrequency * 1.15,
+        now + duration / 1000
+      );
+    }
+
+    ["pointerdown", "keydown", "touchstart"].forEach(function (evt) {
+      window.addEventListener(evt, startSound, { passive: true });
+    });
+
+
+    // Helpful note for the person editing this file (not shown on screen)
+    console.info(
+      "When Did It Change? — Soft blue-gray → extremely subtle green-gray | duration " +
+      duration + " ms"
+    );
+  </script>
+</body>
+</html>

@@ -110,6 +110,12 @@
               "name": "When did it change? (Series 2)",
               "type": "website",
               "path": "sites/Roki-Jongha-Kim/The-questions-shouldnt-explain-the-piece-the-question-should-explain-the-viewer-project/when-did-it-change-series-2/"
+            },
+            {
+              "id": "when-did-it-change-series-3",
+              "name": "When did it change? (Series 3)",
+              "type": "website",
+              "path": "sites/Roki-Jongha-Kim/The-questions-shouldnt-explain-the-piece-the-question-should-explain-the-viewer-project/when-did-it-change-series-3/"
             }
           ]
         }

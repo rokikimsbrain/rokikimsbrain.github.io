@@ -20,6 +20,13 @@
               "path": "sites/oxxy444/oxihiscontorium/new-jeans-i-love-bunnies-how-to-website/"
             }
           ]
+        },
+        {
+          "id": "oxxy-n-friends-websites",
+          "name": "Oxxy n Friends websites",
+          "type": "folder",
+          "path": "sites/oxxy444/Oxxy-n-Friends-websites/",
+          "children": []
         }
       ]
     },

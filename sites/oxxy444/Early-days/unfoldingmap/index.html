@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Detailed Map Animation</title>
+<style>
+  body, html {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background-color: white;
+  }
+  canvas {
+    display: block;
+  }
+</style>
+</head>
+<body>
+<canvas id="mapCanvas"></canvas>
+
+<script>
+  window.onload = function() {
+    const canvas = document.getElementById('mapCanvas');
+    const ctx = canvas.getContext('2d');
+
+    let width = canvas.width = window.innerWidth;
+    let height = canvas.height = window.innerHeight;
+
+    // Resize canvas when the window is resized
+    window.addEventListener('resize', function() {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+      init(); // Reinitialize on resize
+    });
+
+    let elements = [];
+    let drawingSpeed = 1; // Adjust for speed of drawing
+
+    function Shape(lines) {
+      this.lines = lines;
+      this.currentIndex = 0; // Index of the current line being drawn
+      this.done = false;
+    }
+
+    function Line(x1, y1, x2, y2) {
+      this.x1 = x1;
+      this.y1 = y1;
+      this.x2 = x1; // Start at initial point
+      this.y2 = y1;
+      this.targetX2 = x2;
+      this.targetY2 = y2;
+      this.done = false;
+    }
+
+    function init() {
+      elements = [];
+      ctx.clearRect(0, 0, width, height);
+
+      // Create a grid as the base map
+      createGrid();
+
+      // Add predefined shapes to represent natural and human-made objects
+      addNatureShapes();
+      addHumanMadeShapes();
+
+      // Shuffle the elements array for random drawing order
+      shuffleArray(elements);
+    }
+
+    function createGrid() {
+      let gridSize = 50; // Size of the grid cells
+      let cols = Math.ceil(width / gridSize);
+      let rows = Math.ceil(height / gridSize);
+
+      let gridLines = [];
+
+      // Generate vertical lines
+      for (let i = 0; i <= cols; i++) {
+        let x = i * gridSize;
+        let yStart = 0;
+        let yEnd = height;
+        gridLines.push(new Line(x, yStart, x, yEnd));
+      }
+
+      // Generate horizontal lines
+      for (let j = 0; j <= rows; j++) {
+        let y = j * gridSize;
+        let xStart = 0;
+        let xEnd = width;
+        gridLines.push(new Line(xStart, y, xEnd, y));
+      }
+
+      elements.push(new Shape(gridLines));
+    }
+
+    function addNatureShapes() {
+      // Example: Add trees
+      for (let i = 0; i < 10; i++) {
+        let x = Math.random() * width;
+        let y = Math.random() * height;
+
+        let treeLines = createTree(x, y, 20);
+        elements.push(new Shape(treeLines));
+      }
+
+      // Example: Add a river
+      let riverLines = createRiver();
+      elements.push(new Shape(riverLines));
+    }
+
+    function addHumanMadeShapes() {
+      // Example: Add buildings
+      for (let i = 0; i < 5; i++) {
+        let x = Math.random() * (width - 100);
+        let y = Math.random() * (height - 100);
+
+        let buildingLines = createBuilding(x, y, 80, 80);
+        elements.push(new Shape(buildingLines));
+      }
+
+      // Example: Add roads
+      let roadLines = createRoads();
+      elements.push(new Shape(roadLines));
+    }
+
+    function createTree(x, y, size) {
+      let lines = [];
+      // Trunk
+      lines.push(new Line(x, y, x, y - size));
+      // Branches
+      lines.push(new Line(x, y - size, x - size / 2, y - size * 1.5));
+      lines.push(new Line(x, y - size, x + size / 2, y - size * 1.5));
+      return lines;
+    }
+
+    function createRiver() {
+      let lines = [];
+      let points = [];
+      let numPoints = 20;
+      let y = 0;
+      let x = Math.random() * width;
+      let amplitude = 50;
+
+      for (let i = 0; i <= numPoints; i++) {
+        y = (i / numPoints) * height;
+        x += Math.sin(i) * amplitude + (Math.random() - 0.5) * amplitude;
+        points.push({ x: x, y: y });
+      }
+
+      // Create lines between the points
+      for (let i = 0; i < points.length - 1; i++) {
+        lines.push(new Line(points[i].x, points[i].y, points[i + 1].x, points[i + 1].y));
+      }
+
+      return lines;
+    }
+
+    function createBuilding(x, y, width, height) {
+      let lines = [];
+      // Outline of the building
+      lines.push(new Line(x, y, x + width, y));
+      lines.push(new Line(x + width, y, x + width, y + height));
+      lines.push(new Line(x + width, y + height, x, y + height));
+      lines.push(new Line(x, y + height, x, y));
+      // Optional: Add windows or doors
+      return lines;
+    }
+
+    function createRoads() {
+      let lines = [];
+      // Horizontal road
+      let y = Math.random() * height;
+      lines.push(new Line(0, y, width, y));
+
+      // Vertical road
+      let x = Math.random() * width;
+      lines.push(new Line(x, 0, x, height));
+
+      return lines;
+    }
+
+    function shuffleArray(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        let j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+    }
+
+    function updateElements() {
+      let allDone = true;
+      for (let i = 0; i < elements.length; i++) {
+        let shape = elements[i];
+        if (!shape.done) {
+          allDone = false;
+          let line = shape.lines[shape.currentIndex];
+          if (line) {
+            // Extend the line towards the target
+            let dx = line.targetX2 - line.x2;
+            let dy = line.targetY2 - line.y2;
+            let dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist <= drawingSpeed) {
+              line.x2 = line.targetX2;
+              line.y2 = line.targetY2;
+              line.done = true;
+              shape.currentIndex++;
+              if (shape.currentIndex >= shape.lines.length) {
+                shape.done = true;
+              }
+            } else {
+              line.x2 += (dx / dist) * drawingSpeed;
+              line.y2 += (dy / dist) * drawingSpeed;
+            }
+          }
+        }
+      }
+
+      // If all elements are done, restart the animation
+      if (allDone) {
+        setTimeout(init, 2000); // Pause before restarting
+      }
+    }
+
+    function drawElements() {
+      ctx.clearRect(0, 0, width, height);
+      ctx.strokeStyle = 'black';
+      ctx.lineWidth = 1;
+
+      for (let i = 0; i < elements.length; i++) {
+        let shape = elements[i];
+        for (let j = 0; j <= shape.currentIndex; j++) {
+          let line = shape.lines[j];
+          if (line) {
+            ctx.beginPath();
+            ctx.moveTo(line.x1, line.y1);
+            ctx.lineTo(line.x2, line.y2);
+            ctx.stroke();
+          }
+        }
+      }
+    }
+
+    function draw() {
+      updateElements();
+      drawElements();
+
+      requestAnimationFrame(draw);
+    }
+
+    // Initialize and start the animation
+    init();
+    draw();
+  };
+</script>
+</body>
+</html>

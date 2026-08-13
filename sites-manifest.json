@@ -40,7 +40,14 @@
           "name": "Early days",
           "type": "folder",
           "path": "sites/oxxy444/Early-days/",
-          "children": []
+          "children": [
+            {
+              "id": "unfoldingmap",
+              "name": "unfoldingmap",
+              "type": "website",
+              "path": "sites/oxxy444/Early-days/unfoldingmap/"
+            }
+          ]
         }
       ]
     },

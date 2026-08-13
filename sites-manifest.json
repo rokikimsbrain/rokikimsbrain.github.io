@@ -34,7 +34,14 @@
           "name": "78!",
           "type": "folder",
           "path": "sites/whenimgonelookformeinthesouth/78!/",
-          "children": []
+          "children": [
+            {
+              "id": "78-first-popup-photo-zone-website",
+              "name": "78! First popup photo zone website",
+              "type": "website",
+              "path": "sites/whenimgonelookformeinthesouth/78!/78-first-popup-photo-zone-website/"
+            }
+          ]
         }
       ]
     },

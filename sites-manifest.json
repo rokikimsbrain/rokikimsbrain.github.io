@@ -92,7 +92,15 @@
       "name": "546979a9298010",
       "type": "folder",
       "path": "sites/546979a9298010/",
-      "children": []
+      "children": [
+        {
+          "id": "if-history-repeats-itself-perhaps-it-could-repeat-you",
+          "name": "If History repeats itself, perhaps it could repeat you",
+          "type": "folder",
+          "path": "sites/546979a9298010/If-History-repeats-itself-perhaps-it-could-repeat-you/",
+          "children": []
+        }
+      ]
     },
     {
       "id": "trecordof",

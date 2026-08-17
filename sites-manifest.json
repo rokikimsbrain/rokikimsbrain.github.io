@@ -48,6 +48,13 @@
               "path": "sites/oxxy444/Early-days/unfoldingmap/"
             }
           ]
+        },
+        {
+          "id": "studio1",
+          "name": "Studio1",
+          "type": "folder",
+          "path": "sites/oxxy444/Studio1/",
+          "children": []
         }
       ]
     },

@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Inside the iMac</title>
+  <style>
+    :root {
+      --ui: #e8e4dc;
+      --accent: #1f6f8b;
+      --glass: rgba(18, 17, 15, 0.72);
+      /* Measured CRT corners (% of front photo) */
+      --screen-clip: polygon(
+        27.5% 28.8%,
+        57.6% 29.0%,
+        55.3% 68.4%,
+        25.1% 67.9%
+      );
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      background: #fff;
+      color: var(--ui);
+      font-family: "Segoe UI", "Helvetica Neue", sans-serif;
+    }
+
+    .stage {
+      position: fixed;
+      inset: 0;
+      background: #fff;
+    }
+
+    /* Contain-fit box: image keeps native aspect, white fills the rest */
+    .frame {
+      position: absolute;
+    }
+
+    /* Clip on the wrapper — NOT on the transformed video (avoids half-white bug) */
+    .webcam-slot {
+      position: absolute;
+      /* CRT bounding box — video fills this, then clipped to angled glass */
+      left: 25.1%;
+      top: 28.8%;
+      width: 32.5%;
+      height: 39.6%;
+      z-index: 1;
+      /* polygon relative to this box (same CRT corners) */
+      clip-path: polygon(
+        7.4% 0%,
+        100% 0.5%,
+        92.9% 100%,
+        0% 98.7%
+      );
+      -webkit-clip-path: polygon(
+        7.4% 0%,
+        100% 0.5%,
+        92.9% 100%,
+        0% 98.7%
+      );
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.45s ease;
+      background: #111;
+      overflow: hidden;
+    }
+
+    body.show-cam .webcam-slot {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    #webcam {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center center;
+      transform: scaleX(-1);
+      transform-origin: center center;
+      background: #111;
+    }
+
+    #webcam.unmirrored {
+      transform: none;
+    }
+
+    .photo {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 2;
+      display: block;
+      pointer-events: none;
+      transition: opacity 0.45s ease;
+    }
+
+    .photo image {
+      transition: opacity 0.45s ease;
+    }
+
+    .panel {
+      position: fixed;
+      left: 1.25rem;
+      bottom: 1.25rem;
+      z-index: 10;
+      width: min(340px, calc(100vw - 2.5rem));
+      padding: 1rem 1.1rem 1.05rem;
+      background: var(--glass);
+      backdrop-filter: blur(14px);
+      border: 1px solid rgba(232, 228, 220, 0.12);
+      border-radius: 14px;
+      display: grid;
+      gap: 0.75rem;
+    }
+
+    .panel h1 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    .panel p {
+      font-size: 0.8rem;
+      line-height: 1.45;
+      color: rgba(232, 228, 220, 0.72);
+    }
+
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    button {
+      appearance: none;
+      border: 1px solid rgba(232, 228, 220, 0.22);
+      background: rgba(232, 228, 220, 0.08);
+      color: var(--ui);
+      font: inherit;
+      font-size: 0.8rem;
+      padding: 0.55rem 0.8rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    button:hover {
+      background: rgba(232, 228, 220, 0.16);
+      border-color: rgba(232, 228, 220, 0.4);
+    }
+
+    button.primary {
+      background: var(--accent);
+      border-color: transparent;
+      color: #fff;
+      font-weight: 600;
+    }
+
+    button.primary:hover {
+      filter: brightness(1.08);
+    }
+
+    button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .status {
+      font-size: 0.72rem;
+      color: rgba(232, 228, 220, 0.55);
+      min-height: 1em;
+    }
+
+    .hint {
+      position: fixed;
+      top: 1rem;
+      right: 1.25rem;
+      z-index: 10;
+      font-size: 0.72rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(18, 17, 15, 0.35);
+      pointer-events: none;
+    }
+
+    body.clean .panel,
+    body.clean .hint {
+      opacity: 0;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="stage" id="stage">
+    <div class="frame" id="frame">
+      <div class="webcam-slot" id="webcamSlot">
+        <video id="webcam" autoplay playsinline muted></video>
+      </div>
+      <svg class="photo" id="photo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 678" preserveAspectRatio="none">
+        <defs>
+          <mask id="crtHole" maskUnits="userSpaceOnUse">
+            <rect id="maskFull" x="0" y="0" width="1024" height="678" fill="white" />
+            <!-- Same CRT polygon in photo pixel space (1024×678) -->
+            <polygon
+              id="maskHole"
+              fill="black"
+              points="281.6,195.3 589.8,196.6 566.3,463.8 257.0,460.4"
+            />
+          </mask>
+        </defs>
+        <image
+          id="scene"
+          href="images/imac-front.png"
+          x="0"
+          y="0"
+          width="1024"
+          height="678"
+          preserveAspectRatio="none"
+        />
+      </svg>
+    </div>
+  </div>
+
+  <div class="hint">Press H to hide controls · Esc to show</div>
+
+  <aside class="panel" id="panel">
+    <h1>Inside the iMac</h1>
+    <p>
+      Photos fit the screen with white letterboxing. Webcam appears only inside
+      the front iMac CRT, clipped to the angled glass.
+    </p>
+    <div class="row">
+      <button type="button" class="primary" id="startCam">Start camera</button>
+      <button type="button" id="mirrorBtn">Unmirror</button>
+      <button type="button" id="cleanBtn">Hide UI</button>
+      <button type="button" id="pauseBtn">Pause slideshow</button>
+    </div>
+    <div class="status" id="status">Camera off · loading…</div>
+  </aside>
+
+  <script>
+    // CRT corners measured from imac-front.png (1024×678)
+    const FRONT_VIEWBOX = { w: 1024, h: 678 };
+    const CRT_POINTS = [
+      [27.5, 28.8],
+      [57.6, 29.0],
+      [55.3, 68.4],
+      [25.1, 67.9],
+    ];
+
+    const SLIDES = [
+      {
+        src: "images/imac-front.png",
+        label: "front iMac",
+        showCam: true,
+      },
+      {
+        src: "images/imac-side-blue.png",
+        label: "side Bondi Blue",
+        showCam: false,
+      },
+      {
+        src: "images/imac-side-clear.png",
+        label: "side translucent",
+        showCam: false,
+      },
+    ];
+
+    const INTERVAL_MS = 10000;
+
+    const body = document.body;
+    const stage = document.getElementById("stage");
+    const frame = document.getElementById("frame");
+    const photo = document.getElementById("photo");
+    const scene = document.getElementById("scene");
+    const maskFull = document.getElementById("maskFull");
+    const maskHole = document.getElementById("maskHole");
+    const webcam = document.getElementById("webcam");
+    const startCam = document.getElementById("startCam");
+    const mirrorBtn = document.getElementById("mirrorBtn");
+    const cleanBtn = document.getElementById("cleanBtn");
+    const pauseBtn = document.getElementById("pauseBtn");
+    const status = document.getElementById("status");
+
+    let index = 0;
+    let stream = null;
+    let mirrored = true;
+    let paused = false;
+    let timer = null;
+    let natural = { w: FRONT_VIEWBOX.w, h: FRONT_VIEWBOX.h };
+
+    function pctPolygonToPoints(w, h) {
+      return CRT_POINTS.map(([x, y]) => `${(x / 100) * w},${(y / 100) * h}`).join(" ");
+    }
+
+    function syncSvgSize(w, h) {
+      natural = { w, h };
+      photo.setAttribute("viewBox", `0 0 ${w} ${h}`);
+      scene.setAttribute("width", w);
+      scene.setAttribute("height", h);
+      maskFull.setAttribute("width", w);
+      maskFull.setAttribute("height", h);
+      maskHole.setAttribute("points", pctPolygonToPoints(w, h));
+    }
+
+    function setHole(enabled) {
+      if (enabled) {
+        scene.setAttribute("mask", "url(#crtHole)");
+      } else {
+        scene.removeAttribute("mask");
+      }
+    }
+
+    // How large the photo is vs the viewport (0.72 = 72% of a contain-fit)
+    const IMAGE_SCALE = 0.55;
+
+    /** Center a smaller photo in the viewport with white space around it */
+    function layoutFrame() {
+      const { w: nw, h: nh } = natural;
+      if (!nw || !nh) return;
+
+      const sw = stage.clientWidth;
+      const sh = stage.clientHeight;
+      const imageRatio = nw / nh;
+      const stageRatio = sw / sh;
+
+      let width;
+      let height;
+
+      if (imageRatio > stageRatio) {
+        width = sw * IMAGE_SCALE;
+        height = width / imageRatio;
+      } else {
+        height = sh * IMAGE_SCALE;
+        width = height * imageRatio;
+      }
+
+      const left = (sw - width) / 2;
+      const top = (sh - height) / 2;
+
+      frame.style.width = Math.round(width) + "px";
+      frame.style.height = Math.round(height) + "px";
+      frame.style.left = Math.round(left) + "px";
+      frame.style.top = Math.round(top) + "px";
+    }
+
+    function setStatus() {
+      const slide = SLIDES[index];
+      const cam = stream ? "camera on" : "camera off";
+      const mode = slide.showCam ? "webcam in CRT" : "photo only";
+      const play = paused ? "paused" : "slideshow";
+      status.textContent = `${cam} · ${slide.label} · ${mode} · ${play}`;
+    }
+
+    function showSlide(i) {
+      index = ((i % SLIDES.length) + SLIDES.length) % SLIDES.length;
+      const slide = SLIDES[index];
+
+      photo.style.opacity = "0";
+      const probe = new Image();
+      probe.onload = () => {
+        syncSvgSize(probe.naturalWidth, probe.naturalHeight);
+        scene.setAttribute("href", slide.src);
+        // xlink for older Safari
+        scene.setAttributeNS("http://www.w3.org/1999/xlink", "href", slide.src);
+        layoutFrame();
+        body.classList.toggle("show-cam", !!slide.showCam);
+        setHole(!!slide.showCam);
+        requestAnimationFrame(() => {
+          photo.style.opacity = "1";
+        });
+        setStatus();
+      };
+      probe.src = slide.src;
+    }
+
+    function nextSlide() {
+      showSlide(index + 1);
+    }
+
+    function startTimer() {
+      clearInterval(timer);
+      if (!paused) {
+        timer = setInterval(nextSlide, INTERVAL_MS);
+      }
+    }
+
+    async function enableCamera() {
+      try {
+        if (stream) return;
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "user", width: { ideal: 1920 }, height: { ideal: 1080 } },
+          audio: false,
+        });
+        webcam.srcObject = stream;
+        startCam.textContent = "Camera on";
+        startCam.disabled = true;
+        setStatus();
+      } catch (err) {
+        status.textContent = "Camera permission denied or unavailable";
+        console.error(err);
+      }
+    }
+
+    startCam.addEventListener("click", enableCamera);
+
+    mirrorBtn.addEventListener("click", () => {
+      mirrored = !mirrored;
+      webcam.classList.toggle("unmirrored", !mirrored);
+      mirrorBtn.textContent = mirrored ? "Unmirror" : "Mirror";
+    });
+
+    function setClean(on) {
+      body.classList.toggle("clean", on);
+      cleanBtn.textContent = on ? "Show UI" : "Hide UI";
+    }
+
+    cleanBtn.addEventListener("click", () => setClean(!body.classList.contains("clean")));
+
+    pauseBtn.addEventListener("click", () => {
+      paused = !paused;
+      pauseBtn.textContent = paused ? "Resume slideshow" : "Pause slideshow";
+      startTimer();
+      setStatus();
+    });
+
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "h" || e.key === "H") setClean(true);
+      if (e.key === "Escape") setClean(false);
+      if (e.key === "ArrowRight") {
+        nextSlide();
+        startTimer();
+      }
+      if (e.key === "ArrowLeft") {
+        showSlide(index - 1);
+        startTimer();
+      }
+    });
+
+    window.addEventListener("resize", layoutFrame);
+
+    SLIDES.forEach((s) => {
+      const img = new Image();
+      img.src = s.src;
+    });
+
+    showSlide(0);
+    startTimer();
+  </script>
+</body>
+</html>

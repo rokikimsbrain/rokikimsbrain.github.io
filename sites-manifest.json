@@ -54,7 +54,14 @@
           "name": "Studio1",
           "type": "folder",
           "path": "sites/oxxy444/Studio1/",
-          "children": []
+          "children": [
+            {
+              "id": "studioone",
+              "name": "studioone",
+              "type": "website",
+              "path": "sites/oxxy444/Studio1/studioone/"
+            }
+          ]
         }
       ]
     },

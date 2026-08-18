@@ -105,7 +105,14 @@
           "name": "ScrabbleMAFU",
           "type": "folder",
           "path": "sites/546979a9298010/ScrabbleMAFU/",
-          "children": []
+          "children": [
+            {
+              "id": "scrabble-mafu",
+              "name": "Scrabble MAFU",
+              "type": "website",
+              "path": "sites/546979a9298010/ScrabbleMAFU/scrabble-mafu/"
+            }
+          ]
         }
       ]
     },

@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MAFU wordS</title>
+  <style>
+    :root {
+      --cell: 52px;
+      --gap: 10px;
+      --letter-color: #000;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      background: #fff;
+      color: #111;
+      font-family: Helvetica, Arial, sans-serif;
+      font-weight: 700;
+    }
+
+    #stage {
+      position: relative;
+      height: 100vh;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    #board {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: repeat(var(--cols), var(--cell));
+      grid-template-rows: repeat(var(--rows), var(--cell));
+      gap: var(--gap);
+      justify-content: center;
+      align-content: center;
+      padding: 16px;
+      pointer-events: none;
+    }
+
+    .letter {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: var(--cell);
+      height: var(--cell);
+      color: var(--letter-color);
+      font-family: Helvetica, Arial, sans-serif;
+      font-weight: 700;
+      font-size: calc(var(--cell) * 0.58);
+      letter-spacing: -0.04em;
+      line-height: 1;
+      text-transform: uppercase;
+      will-change: transform;
+    }
+
+    #gather {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .gather-letter {
+      position: absolute;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: var(--cell);
+      height: var(--cell);
+      margin-left: calc(var(--cell) / -2);
+      margin-top: calc(var(--cell) / -2);
+      color: var(--letter-color);
+      font-family: Helvetica, Arial, sans-serif;
+      font-weight: 700;
+      font-size: calc(var(--cell) * 0.62);
+      letter-spacing: -0.04em;
+      line-height: 1;
+      text-transform: uppercase;
+      opacity: 0;
+      will-change: transform, opacity;
+    }
+
+    #crayon-kept,
+    #crayon {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    #crayon {
+      z-index: 3;
+      pointer-events: auto;
+      touch-action: none;
+      cursor: default;
+    }
+
+    #crayon.miss {
+      animation: miss-shake 0.55s ease-in-out forwards;
+      pointer-events: none;
+    }
+
+    @keyframes miss-shake {
+      0% { transform: translate(0, 0); opacity: 1; }
+      12% { transform: translate(-14px, 3px); }
+      24% { transform: translate(13px, -4px); }
+      36% { transform: translate(-11px, -2px); }
+      48% { transform: translate(10px, 3px); }
+      60% { transform: translate(-7px, 1px); }
+      72% { transform: translate(5px, -2px); }
+      100% { transform: translate(0, 0); opacity: 0; }
+    }
+
+    #stage-top,
+    #scroll-hint {
+      position: absolute;
+      left: 50%;
+      z-index: 5;
+      transform: translateX(-50%);
+      color: rgba(0, 0, 0, 0.35);
+      font-family: Helvetica, Arial, sans-serif;
+      font-weight: 700;
+      font-size: 9px;
+      letter-spacing: 0.04em;
+      text-transform: none;
+    }
+
+    #stage-top {
+      top: 22px;
+      display: flex;
+      gap: 18px;
+    }
+
+    #stage-top button {
+      background: none;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      color: inherit;
+      font: inherit;
+    }
+
+    #scroll-hint {
+      bottom: 22px;
+      pointer-events: none;
+    }
+
+    #desk {
+      min-height: 100vh;
+      background: #fff;
+      color: #111;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 72px 24px;
+    }
+
+    #desk h1 {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: none;
+      margin-bottom: 28px;
+      opacity: 0.28;
+    }
+
+    #word-form {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 18px;
+      width: min(560px, 100%);
+      margin-bottom: 28px;
+    }
+
+    #word-input {
+      width: 100%;
+      border: none;
+      background: transparent;
+      font-family: Helvetica, Arial, sans-serif;
+      font-weight: 700;
+      font-size: 28px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      text-align: center;
+      padding: 0;
+      outline: none;
+    }
+
+    #word-input::placeholder {
+      color: #111;
+      opacity: 0.22;
+      letter-spacing: 0.04em;
+      text-transform: none;
+      font-size: 16px;
+    }
+
+    #desk button {
+      font-family: Helvetica, Arial, sans-serif;
+      font-weight: 700;
+      font-size: 10px;
+      letter-spacing: 0.04em;
+      text-transform: none;
+      background: transparent;
+      color: #111;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      opacity: 0.28;
+    }
+
+    #desk button:hover {
+      opacity: 0.5;
+    }
+
+    #actions {
+      display: flex;
+      gap: 18px;
+      margin-bottom: 48px;
+    }
+
+    #word-list {
+      list-style: none;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px 18px;
+      max-width: 720px;
+    }
+
+    #word-list li {
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      opacity: 0.28;
+    }
+
+    #word-list li.found {
+      opacity: 1;
+    }
+
+    #gate {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      background: #fff;
+      color: #111;
+      text-align: center;
+      padding: 24px;
+    }
+
+    #gate.hidden {
+      display: none;
+    }
+
+    #gate h1 {
+      font-size: clamp(32px, 6vw, 64px);
+      letter-spacing: -0.04em;
+    }
+
+    #gate button {
+      font-family: Helvetica, Arial, sans-serif;
+      font-weight: 700;
+      font-size: 10px;
+      letter-spacing: 0.04em;
+      text-transform: none;
+      background: transparent;
+      color: #111;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      opacity: 0.28;
+    }
+
+    #gate button:hover {
+      opacity: 0.5;
+    }
+  </style>
+</head>
+<body>
+  <section id="stage">
+    <div id="stage-top">
+      <button type="button" id="restart">restart</button>
+      <button type="button" id="color">color</button>
+    </div>
+    <div id="board"></div>
+    <div id="gather"></div>
+    <canvas id="crayon-kept"></canvas>
+    <canvas id="crayon"></canvas>
+    <div id="scroll-hint">scroll to add words</div>
+  </section>
+
+  <section id="desk">
+    <h1>words</h1>
+    <form id="word-form">
+      <input id="word-input" type="text" maxlength="16" autocomplete="off" spellcheck="false" placeholder="type a word" />
+      <button type="submit">add</button>
+    </form>
+    <div id="actions">
+      <button type="button" id="shuffle">shuffle</button>
+    </div>
+    <ul id="word-list"></ul>
+  </section>
+
+  <div id="gate">
+    <h1>MAFU wordS</h1>
+    <button type="button" id="start">start</button>
+  </div>
+
+  <script>
+    const BAG = "EEEEEEEEEEEEAAAAAAAAAIIIIIIIIIOOOOOOOONNNNNNRRRRRRTTTTTTLLLLSSSSUUUUDDDDGGGBBCCMMPPFFHHVVWWYYKJXQZ";
+    const DIRS = [
+      [1, 0], [0, 1], [1, 1], [-1, 0], [0, -1], [-1, -1], [1, -1], [-1, 1]
+    ];
+
+    const boardEl = document.getElementById("board");
+    const gatherEl = document.getElementById("gather");
+    const canvas = document.getElementById("crayon");
+    const ctx = canvas.getContext("2d");
+    const keptCanvas = document.getElementById("crayon-kept");
+    const keptCtx = keptCanvas.getContext("2d");
+    const gateEl = document.getElementById("gate");
+    const wordListEl = document.getElementById("word-list");
+    const wordInput = document.getElementById("word-input");
+    const stageEl = document.getElementById("stage");
+
+    let cols = 0;
+    let rows = 0;
+    let tiles = [];
+    let locked = new Set();
+    let placedWords = [];
+    let drawing = false;
+    let lastPt = null;
+    let stroke = [];
+    let missPlaying = false;
+    const mouse = { x: 0, y: 0, on: false, lastX: 0, lastY: 0 };
+
+    function randLetter() {
+      return BAG[(Math.random() * BAG.length) | 0];
+    }
+
+    function measure() {
+      const gap = 10;
+      const pad = 32;
+      const ideal = window.innerWidth < 700 ? 36 : 52;
+      const w = stageEl.clientWidth;
+      const h = stageEl.clientHeight;
+      cols = Math.max(8, Math.floor((w - pad) / (ideal + gap)));
+      rows = Math.max(6, Math.floor((h - pad) / (ideal + gap)));
+      const cell = Math.max(26, Math.min(
+        (w - pad - gap * (cols - 1)) / cols,
+        (h - pad - gap * (rows - 1)) / rows
+      ));
+      document.documentElement.style.setProperty("--cols", cols);
+      document.documentElement.style.setProperty("--rows", rows);
+      document.documentElement.style.setProperty("--cell", cell + "px");
+    }
+
+    function idx(x, y) {
+      return y * cols + x;
+    }
+
+    function cacheRest() {
+      const stageRect = stageEl.getBoundingClientRect();
+      tiles.forEach((tile) => {
+        tile.el.style.transform = "none";
+        tile.px = 0;
+        tile.py = 0;
+        tile.fade = 0;
+        tile.el.style.opacity = "";
+        const r = tile.el.getBoundingClientRect();
+        tile.restX = r.left + r.width / 2 - stageRect.left;
+        tile.restY = r.top + r.height / 2 - stageRect.top;
+      });
+    }
+
+    function cellSize() {
+      return parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--cell")) || 52;
+    }
+
+    function clearGather() {
+      gatherEl.innerHTML = "";
+    }
+
+    function wordTargets(word, wordIndex, totalWords) {
+      const cell = cellSize();
+      const step = cell * 0.92;
+      const width = (word.length - 1) * step;
+      const cx = stageEl.clientWidth / 2;
+      const cy = stageEl.clientHeight / 2 + (wordIndex - (totalWords - 1) / 2) * (cell + 36);
+      return word.split("").map((_, i) => ({
+        x: cx - width / 2 + i * step,
+        y: cy
+      }));
+    }
+
+    function pickStarts(count) {
+      const pool = tiles.slice();
+      for (let i = pool.length - 1; i > 0; i--) {
+        const j = (Math.random() * (i + 1)) | 0;
+        [pool[i], pool[j]] = [pool[j], pool[i]];
+      }
+      return pool.slice(0, count);
+    }
+
+    function makeFlyers(word, alreadyFound) {
+      const starts = pickStarts(word.length);
+      return word.split("").map((ch, i) => {
+        const el = document.createElement("div");
+        el.className = "gather-letter";
+        el.textContent = ch;
+        gatherEl.appendChild(el);
+        const startX = starts[i] ? starts[i].restX : stageEl.clientWidth * Math.random();
+        const startY = starts[i] ? starts[i].restY : stageEl.clientHeight * Math.random();
+        const flyer = {
+          el, ch,
+          progress: alreadyFound ? 1 : 0,
+          startX, startY,
+          x: startX,
+          y: startY
+        };
+        el.style.left = startX + "px";
+        el.style.top = startY + "px";
+        el.style.opacity = alreadyFound ? "1" : "0";
+        return flyer;
+      });
+    }
+
+    function fieldZones() {
+      const zones = [];
+      const cell = cellSize();
+      const pad = cell * 1.05;
+      placedWords.forEach((entry) => {
+        const active = (entry.flyers || []).filter((f) => f.progress > 0.08);
+        if (!active.length) return;
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        active.forEach((f) => {
+          minX = Math.min(minX, f.x);
+          maxX = Math.max(maxX, f.x);
+          minY = Math.min(minY, f.y);
+          maxY = Math.max(maxY, f.y);
+        });
+        zones.push({
+          left: minX - pad,
+          top: minY - pad,
+          right: maxX + pad,
+          bottom: maxY + pad,
+          innerLeft: minX - cell * 0.32,
+          innerTop: minY - cell * 0.32,
+          innerRight: maxX + cell * 0.32,
+          innerBottom: maxY + cell * 0.32
+        });
+      });
+      return zones;
+    }
+
+    function insideRect(x, y, l, t, r, b) {
+      return x >= l && x <= r && y >= t && y <= b;
+    }
+
+    function outOfRect(x, y, l, t, r, b) {
+      if (!insideRect(x, y, l, t, r, b)) return { x: 0, y: 0 };
+      const dl = x - l;
+      const dr = r - x;
+      const dt = y - t;
+      const db = b - y;
+      const min = Math.min(dl, dr, dt, db);
+      if (min === dl) return { x: l - x, y: 0 };
+      if (min === dr) return { x: r - x, y: 0 };
+      if (min === dt) return { x: 0, y: t - y };
+      return { x: 0, y: b - y };
+    }
+
+    function clampVec(x, y, max) {
+      const len = Math.hypot(x, y);
+      if (len <= max || len === 0) return { x, y };
+      return { x: (x / len) * max, y: (y / len) * max };
+    }
+
+    function pushLetters() {
+      const mouseRadius = 110;
+      const mousePush = 36;
+      const zones = fieldZones();
+      tiles.forEach((tile) => {
+        let tx = 0;
+        let ty = 0;
+        let hide = 0;
+
+        if (mouse.on) {
+          const dx = tile.restX - mouse.x;
+          const dy = tile.restY - mouse.y;
+          const dist = Math.hypot(dx, dy) || 0.001;
+          if (dist < mouseRadius) {
+            const falloff = 1 - dist / mouseRadius;
+            const force = falloff * falloff * mousePush;
+            tx += (dx / dist) * force;
+            ty += (dy / dist) * force;
+          }
+        }
+
+        zones.forEach((z) => {
+          if (insideRect(tile.restX, tile.restY, z.innerLeft, z.innerTop, z.innerRight, z.innerBottom)) {
+            hide = 1;
+            return;
+          }
+          const p = outOfRect(tile.restX, tile.restY, z.left, z.top, z.right, z.bottom);
+          tx += p.x;
+          ty += p.y;
+        });
+
+        const capped = clampVec(tx, ty, 46);
+        tile.px += (capped.x - tile.px) * 0.07;
+        tile.py += (capped.y - tile.py) * 0.07;
+        tile.fade = (tile.fade || 0) + (hide - (tile.fade || 0)) * 0.1;
+        if (Math.abs(tile.px) < 0.03) tile.px = 0;
+        if (Math.abs(tile.py) < 0.03) tile.py = 0;
+        tile.el.style.transform = (tile.px || tile.py)
+          ? `translate(${tile.px}px, ${tile.py}px)`
+          : "none";
+        tile.el.style.opacity = String(1 - tile.fade);
+      });
+      assembleWords();
+      requestAnimationFrame(pushLetters);
+    }
+
+    function assembleWords() {
+      const moved = Math.hypot(mouse.x - mouse.lastX, mouse.y - mouse.lastY);
+      if (mouse.on) {
+        mouse.lastX = mouse.x;
+        mouse.lastY = mouse.y;
+      }
+      const step = (!mouse.on || moved < 0.35) ? 0 : Math.min(moved, 16) * 0.00135;
+
+      placedWords.forEach((entry, wi) => {
+        const targets = wordTargets(entry.word, wi, placedWords.length);
+        if (step && !entry.found) {
+          const next = entry.flyers.findIndex((f) => f.progress < 1);
+          if (next === -1) {
+            entry.found = true;
+            renderWordList();
+          } else {
+            entry.flyers[next].progress = Math.min(1, entry.flyers[next].progress + step);
+          }
+        }
+        entry.flyers.forEach((f, i) => {
+          const t = 1 - Math.pow(1 - f.progress, 3);
+          f.x = f.startX + (targets[i].x - f.startX) * t;
+          f.y = f.startY + (targets[i].y - f.startY) * t;
+          f.el.style.left = f.x + "px";
+          f.el.style.top = f.y + "px";
+          f.el.style.opacity = f.progress <= 0 ? "0" : String(Math.min(1, f.progress * 3));
+        });
+      });
+    }
+
+    function setLetter(tile, letter) {
+      tile.letter = letter;
+      tile.glyph.textContent = letter;
+    }
+
+    function renderWordList() {
+      wordListEl.innerHTML = "";
+      placedWords.forEach((entry) => {
+        const li = document.createElement("li");
+        li.textContent = entry.word;
+        if (entry.found) li.classList.add("found");
+        wordListEl.appendChild(li);
+      });
+    }
+
+    function buildBoard() {
+      const saved = placedWords.map((entry) => ({ word: entry.word, found: entry.found }));
+      measure();
+      boardEl.innerHTML = "";
+      tiles = [];
+      locked = new Set();
+      placedWords = [];
+
+      const frag = document.createDocumentFragment();
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+          const el = document.createElement("div");
+          el.className = "letter";
+          const glyph = document.createElement("span");
+          glyph.className = "glyph";
+          const letter = randLetter();
+          glyph.textContent = letter;
+          el.appendChild(glyph);
+          frag.appendChild(el);
+          tiles.push({ el, glyph, letter, x, y, px: 0, py: 0, restX: 0, restY: 0 });
+        }
+      }
+      boardEl.appendChild(frag);
+      cacheRest();
+      clearGather();
+      saved.forEach((entry) => placeWord(entry.word, entry.found));
+      renderWordList();
+      clearKept();
+      clearLive();
+    }
+
+    function fillUnlocked() {
+      tiles.forEach((tile) => setLetter(tile, randLetter()));
+    }
+
+    function placeWord(word, alreadyFound) {
+      word = String(word).toUpperCase().replace(/[^A-Z]/g, "");
+      if (word.length < 2) return false;
+      const flyers = makeFlyers(word, alreadyFound);
+      placedWords.push({ word, flyers, found: !!alreadyFound });
+      if (alreadyFound) assembleWords();
+      return true;
+    }
+
+    function addWord(raw) {
+      const word = raw.toUpperCase().replace(/[^A-Z]/g, "");
+      if (word.length < 2) return false;
+      if (placedWords.some((entry) => entry.word === word)) return false;
+      if (!placeWord(word, false)) return false;
+      fillUnlocked();
+      cacheRest();
+      renderWordList();
+      return true;
+    }
+
+    function shuffleBoard() {
+      const saved = placedWords.map((entry) => ({ word: entry.word, found: entry.found }));
+      placedWords = [];
+      clearGather();
+      tiles.forEach((tile) => setLetter(tile, randLetter()));
+      cacheRest();
+      saved.forEach((entry) => placeWord(entry.word, entry.found));
+      renderWordList();
+      clearKept();
+      clearLive();
+    }
+
+    function sizeOneCanvas(el, context) {
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+      const w = stageEl.clientWidth;
+      const h = stageEl.clientHeight;
+      el.width = Math.floor(w * dpr);
+      el.height = Math.floor(h * dpr);
+      el.style.width = w + "px";
+      el.style.height = h + "px";
+      context.setTransform(dpr, 0, 0, dpr, 0, 0);
+      context.lineCap = "round";
+      context.lineJoin = "round";
+    }
+
+    function sizeCanvas() {
+      sizeOneCanvas(canvas, ctx);
+      sizeOneCanvas(keptCanvas, keptCtx);
+    }
+
+    function clearLive() {
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.restore();
+    }
+
+    function clearKept() {
+      keptCtx.save();
+      keptCtx.setTransform(1, 0, 0, 1, 0, 0);
+      keptCtx.clearRect(0, 0, keptCanvas.width, keptCanvas.height);
+      keptCtx.restore();
+    }
+
+    function stampLiveToKept() {
+      keptCtx.save();
+      keptCtx.setTransform(1, 0, 0, 1, 0, 0);
+      keptCtx.drawImage(canvas, 0, 0);
+      keptCtx.restore();
+    }
+
+    function crayonStroke(a, b) {
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const dist = Math.hypot(dx, dy) || 1;
+      const steps = Math.max(1, dist / 1.4);
+
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const x = a.x + dx * t;
+        const y = a.y + dy * t;
+        const px = x + (Math.random() - 0.5) * 2.8;
+        const py = y + (Math.random() - 0.5) * 2.8;
+        const r = 3.2 + Math.random() * 3.8;
+        ctx.fillStyle = `rgba(210, 24, 24, ${0.12 + Math.random() * 0.22})`;
+        ctx.beginPath();
+        ctx.arc(px, py, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.strokeStyle = "rgba(220, 28, 28, 0.22)";
+      ctx.lineWidth = 7;
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+    }
+
+    function ptFromEvent(e) {
+      const rect = canvas.getBoundingClientRect();
+      return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    }
+
+    function strokeBounds(points) {
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      points.forEach((p) => {
+        minX = Math.min(minX, p.x);
+        minY = Math.min(minY, p.y);
+        maxX = Math.max(maxX, p.x);
+        maxY = Math.max(maxY, p.y);
+      });
+      return { minX, minY, maxX, maxY, w: maxX - minX, h: maxY - minY };
+    }
+
+    function quadrantsAround(cx, cy, points) {
+      const hits = [false, false, false, false];
+      points.forEach((p) => {
+        if (p.x >= cx && p.y <= cy) hits[0] = true;
+        if (p.x < cx && p.y <= cy) hits[1] = true;
+        if (p.x < cx && p.y > cy) hits[2] = true;
+        if (p.x >= cx && p.y > cy) hits[3] = true;
+      });
+      return hits.filter(Boolean).length;
+    }
+
+    function markFound(entry) {
+      if (entry.found) return;
+      entry.found = true;
+      (entry.flyers || []).forEach((f) => {
+        f.progress = 1;
+        f.el.style.opacity = "1";
+      });
+      renderWordList();
+    }
+
+    function detectCircledWords() {
+      if (stroke.length < 12) return false;
+      const box = strokeBounds(stroke);
+      if (box.w < 36 || box.h < 36) return false;
+
+      let foundAny = false;
+      placedWords.forEach((entry) => {
+        if (entry.found) return;
+        const flyers = entry.flyers || [];
+        if (!flyers.length || flyers.some((f) => f.progress < 1)) return;
+        const letters = flyers.map((f) => {
+          const half = cellSize() / 2;
+          return {
+            left: f.x - half,
+            top: f.y - half,
+            right: f.x + half,
+            bottom: f.y + half
+          };
+        });
+
+        const inside = letters.every((r) =>
+          r.left >= box.minX - 16 &&
+          r.right <= box.maxX + 16 &&
+          r.top >= box.minY - 16 &&
+          r.bottom <= box.maxY + 16
+        );
+        if (!inside) return;
+
+        const cx = letters.reduce((s, r) => s + (r.left + r.right) / 2, 0) / letters.length;
+        const cy = letters.reduce((s, r) => s + (r.top + r.bottom) / 2, 0) / letters.length;
+        if (quadrantsAround(cx, cy, stroke) < 3) return;
+
+        const wordW = Math.max(...letters.map((r) => r.right)) - Math.min(...letters.map((r) => r.left));
+        const wordH = Math.max(...letters.map((r) => r.bottom)) - Math.min(...letters.map((r) => r.top));
+        if (box.w < wordW * 0.85 || box.h < wordH * 0.85) return;
+
+        markFound(entry);
+        foundAny = true;
+      });
+      return foundAny;
+    }
+
+    function playMiss() {
+      missPlaying = true;
+      canvas.classList.remove("miss");
+      void canvas.offsetWidth;
+      canvas.classList.add("miss");
+    }
+
+    canvas.addEventListener("animationend", (e) => {
+      if (e.animationName !== "miss-shake") return;
+      canvas.classList.remove("miss");
+      clearLive();
+      missPlaying = false;
+    });
+
+    function startDraw(e) {
+      if (missPlaying) return;
+      drawing = true;
+      lastPt = ptFromEvent(e);
+      stroke = [{ x: lastPt.x, y: lastPt.y }];
+      crayonStroke(lastPt, lastPt);
+    }
+
+    function moveDraw(e) {
+      if (!drawing || !lastPt) return;
+      const p = ptFromEvent(e);
+      crayonStroke(lastPt, p);
+      stroke.push(p);
+      lastPt = p;
+    }
+
+    function endDraw() {
+      if (!drawing) return;
+      drawing = false;
+      lastPt = null;
+      const found = detectCircledWords();
+      const box = stroke.length ? strokeBounds(stroke) : { w: 0, h: 0 };
+      const drewEnough = stroke.length >= 12 && box.w >= 36 && box.h >= 36;
+      stroke = [];
+
+      if (found) {
+        stampLiveToKept();
+        clearLive();
+        return;
+      }
+      if (drewEnough) {
+        playMiss();
+        return;
+      }
+      clearLive();
+    }
+
+    document.getElementById("start").addEventListener("click", () => {
+      gateEl.classList.add("hidden");
+    });
+
+    document.getElementById("word-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const ok = addWord(wordInput.value);
+      if (ok) {
+        wordInput.value = "";
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } else {
+        wordInput.style.color = "#e11d1d";
+        setTimeout(() => { wordInput.style.color = ""; }, 350);
+      }
+    });
+
+    document.getElementById("shuffle").addEventListener("click", shuffleBoard);
+    document.getElementById("restart").addEventListener("click", () => {
+      placedWords = [];
+      buildBoard();
+    });
+
+    const LETTER_COLORS = ["#ffffff", "#000000", "#8a8a8a"];
+    let letterColorIndex = 1;
+    document.getElementById("color").addEventListener("click", () => {
+      letterColorIndex = (letterColorIndex + 1) % LETTER_COLORS.length;
+      document.documentElement.style.setProperty("--letter-color", LETTER_COLORS[letterColorIndex]);
+    });
+
+    window.addEventListener("pointermove", (e) => {
+      const rect = canvas.getBoundingClientRect();
+      if (
+        e.clientX >= rect.left && e.clientX <= rect.right &&
+        e.clientY >= rect.top && e.clientY <= rect.bottom
+      ) {
+        mouse.x = e.clientX - rect.left;
+        mouse.y = e.clientY - rect.top;
+        mouse.on = true;
+      } else if (!drawing) {
+        mouse.on = false;
+      }
+    });
+    canvas.addEventListener("pointerdown", (e) => {
+      canvas.setPointerCapture(e.pointerId);
+      startDraw(e);
+    });
+    canvas.addEventListener("pointermove", (e) => {
+      const p = ptFromEvent(e);
+      mouse.x = p.x;
+      mouse.y = p.y;
+      mouse.on = true;
+      moveDraw(e);
+    });
+    canvas.addEventListener("pointerleave", () => {
+      mouse.on = false;
+    });
+    canvas.addEventListener("pointerup", endDraw);
+    canvas.addEventListener("pointercancel", endDraw);
+
+    let resizeTimer;
+    window.addEventListener("resize", () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        buildBoard();
+        sizeCanvas();
+      }, 120);
+    });
+
+    buildBoard();
+    sizeCanvas();
+    cacheRest();
+    requestAnimationFrame(pushLetters);
+  </script>
+</body>
+</html>

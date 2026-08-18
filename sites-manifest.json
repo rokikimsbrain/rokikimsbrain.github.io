@@ -111,6 +111,12 @@
               "name": "Scrabble MAFU",
               "type": "website",
               "path": "sites/546979a9298010/ScrabbleMAFU/scrabble-mafu/"
+            },
+            {
+              "id": "word-appear",
+              "name": "Word Appear",
+              "type": "website",
+              "path": "sites/546979a9298010/ScrabbleMAFU/word-appear/"
             }
           ]
         }

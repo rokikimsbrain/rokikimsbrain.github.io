@@ -117,6 +117,12 @@
               "name": "Word Appear",
               "type": "website",
               "path": "sites/546979a9298010/ScrabbleMAFU/word-appear/"
+            },
+            {
+              "id": "hand-1",
+              "name": "Hand 1",
+              "type": "website",
+              "path": "sites/546979a9298010/ScrabbleMAFU/hand-1/"
             }
           ]
         }

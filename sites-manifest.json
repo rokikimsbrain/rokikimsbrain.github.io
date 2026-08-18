@@ -123,6 +123,12 @@
               "name": "Hand 1",
               "type": "website",
               "path": "sites/546979a9298010/ScrabbleMAFU/hand-1/"
+            },
+            {
+              "id": "hand-2",
+              "name": "Hand 2",
+              "type": "website",
+              "path": "sites/546979a9298010/ScrabbleMAFU/hand-2/"
             }
           ]
         }

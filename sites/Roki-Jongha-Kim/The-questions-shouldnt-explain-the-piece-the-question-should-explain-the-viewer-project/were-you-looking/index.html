@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Were You Looking?</title>
+  <style>
+    /*
+      Full-viewport color field.
+      No UI, no borders, no scrollbars — just light filling the window.
+    */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000; /* brief flash-prevention before JS paints the first color */
+    }
+
+    #field {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      /* solid color only — never a gradient */
+      background-color: rgb(0, 0, 0);
+    }
+
+    #form {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      display: block;
+    }
+
+    /* Cursor is hidden via the .idle class after a few seconds of no input */
+    body.idle,
+    body.idle * {
+      cursor: none !important;
+    }
+  </style>
+</head>
+<body>
+  <div id="field" aria-hidden="true"></div>
+  <canvas id="form" aria-hidden="true"></canvas>
+
+  <script>
+    // ============================================================
+    //  WERE YOU LOOKING?
+    //  Attention as the medium. Inspecting it prevents seeing it.
+    //
+    //  HOW TO EXPERIMENT (look for the ★ markers below):
+    //    ★ 1. Resting color
+    //    ★ 2. How long they must be still
+    //    ★ 3. How slowly the form arrives
+    //    ★ 4. How faint it is allowed to get
+    //    ★ 5. Sound
+    // ============================================================
+
+
+    // ------------------------------------------------------------
+    // ★ 1. RESTING COLOR
+    //
+    // Same near-blank paper-white as the other two pieces.
+    // ------------------------------------------------------------
+    const restColor = { r: 245, g: 240, b: 232 };
+
+
+    // ------------------------------------------------------------
+    // ★ 2. STILLNESS
+    //
+    // Nothing happens until the pointer has been still this long.
+    // Randomized each time they settle, so it cannot be timed.
+    // Values are milliseconds.
+    // ------------------------------------------------------------
+    const stillRange = [15000, 30000];
+
+    // Ignore tiny pointer jitter (some mice send 1px noise).
+    const moveThreshold = 5;
+
+
+    // ------------------------------------------------------------
+    // ★ 3. EMERGENCE
+    //
+    // Once stillness is earned, the form takes this long to fully arrive.
+    // Most viewers will interrupt long before it gets there.
+    // ------------------------------------------------------------
+    const emergeDuration = 52000;
+
+
+    // ------------------------------------------------------------
+    // ★ 4. FAINTNESS
+    //
+    // Peak opacity of the form at progress = 1.
+    // Keep low. Even “fully there” should be easy to doubt.
+    // ------------------------------------------------------------
+    const maxOpacity = 0.13;
+
+
+    // ------------------------------------------------------------
+    // ★ 5. SOUND
+    //
+    // A room-tone that only exists while the form is emerging.
+    // It cuts the instant they move. Starts after first click/key.
+    // ------------------------------------------------------------
+    const SOUND = {
+      masterGain: 0.01,
+      oscillators: [
+        { frequency: 49.0,  type: "sine",     gain: 0.5 },
+        { frequency: 49.2,  type: "sine",     gain: 0.35 },
+        { frequency: 73.5,  type: "triangle", gain: 0.12 },
+      ],
+      filterFrequency: 280,
+    };
+
+
+    // ============================================================
+    // Below this line: the engine. You usually won’t need to edit it.
+    // ============================================================
+
+
+    const field = document.getElementById("field");
+    const canvas = document.getElementById("form");
+    const ctx = canvas.getContext("2d");
+
+    function rand(min, max) {
+      return min + Math.random() * (max - min);
+    }
+
+    function rgbToCss(rgb) {
+      return "rgb(" + rgb.r + ", " + rgb.g + ", " + rgb.b + ")";
+    }
+
+    function smoothstep(t) {
+      const x = Math.min(1, Math.max(0, t));
+      return x * x * (3 - 2 * x);
+    }
+
+    field.style.backgroundColor = rgbToCss(restColor);
+
+
+    // --- Canvas -------------------------------------------------
+
+    function sizeCanvas() {
+      const dpr = window.devicePixelRatio || 1;
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      canvas.style.width = w + "px";
+      canvas.style.height = h + "px";
+      canvas.width = Math.max(1, Math.round(w * dpr));
+      canvas.height = Math.max(1, Math.round(h * dpr));
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+    }
+
+    window.addEventListener("resize", sizeCanvas);
+    sizeCanvas();
+
+
+    // A form is never a picture of something. It is a temperature.
+    function makeForm() {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const cx = w * rand(0.22, 0.78);
+      const cy = h * rand(0.22, 0.78);
+      const kind = Math.random();
+
+      if (kind < 0.34) {
+        return {
+          blobs: [
+            { x: cx, y: cy, rx: w * rand(0.12, 0.22), ry: h * rand(0.16, 0.32) },
+          ],
+        };
+      }
+
+      if (kind < 0.67) {
+        const dx = w * rand(0.04, 0.1);
+        const dy = h * rand(0.05, 0.12);
+        return {
+          blobs: [
+            { x: cx, y: cy, rx: w * rand(0.1, 0.16), ry: h * rand(0.14, 0.22) },
+            { x: cx + dx, y: cy + dy, rx: w * rand(0.07, 0.13), ry: h * rand(0.1, 0.18) },
+          ],
+        };
+      }
+
+      return {
+        blobs: [
+          { x: w * 0.5, y: h * rand(0.42, 0.58), rx: w * rand(0.38, 0.55), ry: h * rand(0.04, 0.08) },
+        ],
+      };
+    }
+
+    function drawForm(progress, form) {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      ctx.clearRect(0, 0, w, h);
+      if (!form || progress <= 0) return;
+
+      const t = smoothstep(progress);
+      const alpha = t * maxOpacity;
+
+      form.blobs.forEach(function (blob) {
+        const g = ctx.createRadialGradient(
+          blob.x,
+          blob.y,
+          0,
+          blob.x,
+          blob.y,
+          Math.max(blob.rx, blob.ry)
+        );
+        g.addColorStop(0, "rgba(18, 17, 15, " + alpha + ")");
+        g.addColorStop(0.45, "rgba(52, 68, 98, " + alpha * 0.4 + ")");
+        g.addColorStop(1, "rgba(245, 240, 232, 0)");
+
+        ctx.save();
+        ctx.translate(blob.x, blob.y);
+        ctx.scale(blob.rx / Math.max(blob.rx, blob.ry), blob.ry / Math.max(blob.rx, blob.ry));
+        ctx.translate(-blob.x, -blob.y);
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, w, h);
+        ctx.restore();
+      });
+    }
+
+
+    // --- Sound (only while a form is present) -------------------
+
+    let audioStarted = false;
+    let audioCtx = null;
+    let master = null;
+
+    function startSound() {
+      if (audioStarted) return;
+      audioStarted = true;
+
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+
+      audioCtx = new AudioContext();
+      if (audioCtx.state === "suspended") audioCtx.resume();
+
+      master = audioCtx.createGain();
+      master.gain.value = 0;
+      master.connect(audioCtx.destination);
+
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = "lowpass";
+      filter.frequency.value = SOUND.filterFrequency;
+      filter.Q.value = 0.5;
+      filter.connect(master);
+
+      SOUND.oscillators.forEach(function (spec) {
+        const osc = audioCtx.createOscillator();
+        osc.type = spec.type;
+        osc.frequency.value = spec.frequency;
+        const g = audioCtx.createGain();
+        g.gain.value = spec.gain;
+        osc.connect(g);
+        g.connect(filter);
+        osc.start();
+      });
+    }
+
+    function setSoundLevel(progress) {
+      if (!master || !audioCtx) return;
+      const now = audioCtx.currentTime;
+      const target = progress > 0 ? SOUND.masterGain * smoothstep(progress) : 0;
+      master.gain.cancelScheduledValues(now);
+      master.gain.setTargetAtTime(target, now, progress > 0 ? 0.4 : 0.03);
+    }
+
+    ["pointerdown", "keydown", "touchstart"].forEach(function (evt) {
+      window.addEventListener(evt, startSound, { passive: true });
+    });
+
+
+    // --- Attention / stillness ----------------------------------
+
+    let lastInput = performance.now();
+    let lastX = null;
+    let lastY = null;
+    let waitFor = rand(stillRange[0], stillRange[1]);
+    let emerging = false;
+    let emergeStart = 0;
+    let progress = 0;
+    let form = null;
+
+    function interrupt() {
+      lastInput = performance.now();
+      waitFor = rand(stillRange[0], stillRange[1]);
+      if (progress > 0 || emerging) {
+        emerging = false;
+        progress = 0;
+        form = null;
+        drawForm(0, null);
+        setSoundLevel(0);
+      }
+    }
+
+    function onPointerMove(event) {
+      const x = event.clientX;
+      const y = event.clientY;
+      if (lastX !== null && lastY !== null) {
+        const dist = Math.hypot(x - lastX, y - lastY);
+        if (dist < moveThreshold) {
+          lastX = x;
+          lastY = y;
+          return;
+        }
+      }
+      lastX = x;
+      lastY = y;
+      interrupt();
+    }
+
+    window.addEventListener("pointermove", onPointerMove, { passive: true });
+    ["pointerdown", "keydown", "touchstart", "wheel"].forEach(function (evt) {
+      window.addEventListener(evt, interrupt, { passive: true });
+    });
+
+
+    function tick(now) {
+      const stillMs = now - lastInput;
+
+      if (stillMs < waitFor) {
+        if (emerging || progress > 0) {
+          emerging = false;
+          progress = 0;
+          form = null;
+          drawForm(0, null);
+          setSoundLevel(0);
+        }
+      } else {
+        if (!emerging) {
+          emerging = true;
+          emergeStart = now;
+          form = makeForm();
+        }
+        progress = Math.min(1, (now - emergeStart) / emergeDuration);
+        drawForm(progress, form);
+        setSoundLevel(progress);
+      }
+
+      requestAnimationFrame(tick);
+    }
+
+    requestAnimationFrame(tick);
+
+
+    // --- Hide cursor after inactivity ---------------------------
+
+    const IDLE_MS = 3000;
+    let idleTimer = null;
+
+    function markActive() {
+      document.body.classList.remove("idle");
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(function () {
+        document.body.classList.add("idle");
+      }, IDLE_MS);
+    }
+
+    ["mousemove", "mousedown", "keydown", "touchstart", "pointerdown"].forEach(
+      function (evt) {
+        window.addEventListener(evt, markActive, { passive: true });
+      }
+    );
+    markActive();
+
+
+    console.info("Were You Looking?");
+  </script>
+</body>
+</html>

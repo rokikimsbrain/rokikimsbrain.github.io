@@ -182,6 +182,12 @@
               "name": "Did You See That?",
               "type": "website",
               "path": "sites/Roki-Jongha-Kim/The-questions-shouldnt-explain-the-piece-the-question-should-explain-the-viewer-project/did-you-see-that/"
+            },
+            {
+              "id": "were-you-looking",
+              "name": "Were you looking?",
+              "type": "website",
+              "path": "sites/Roki-Jongha-Kim/The-questions-shouldnt-explain-the-piece-the-question-should-explain-the-viewer-project/were-you-looking/"
             }
           ]
         }

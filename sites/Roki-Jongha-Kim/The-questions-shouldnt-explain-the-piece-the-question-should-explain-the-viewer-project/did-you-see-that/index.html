@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title> </title>
+  <style>
+    /*
+      Full-viewport color field.
+      No UI, no borders, no scrollbars — just light filling the window.
+    */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000; /* brief flash-prevention before JS paints the first color */
+    }
+
+    #field {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      /* solid color only — never a gradient */
+      background-color: rgb(0, 0, 0);
+    }
+
+    #specks {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      display: block;
+    }
+
+    /* Cursor is hidden via the .idle class after a few seconds of no input */
+    body.idle,
+    body.idle * {
+      cursor: none !important;
+    }
+  </style>
+</head>
+<body>
+  <div id="field" aria-hidden="true"></div>
+  <canvas id="specks" aria-hidden="true"></canvas>
+
+  <script>
+    // ============================================================
+    //  DID YOU SEE THAT?
+    //  Ambiguous events. False echoes. Certainty as the medium.
+    //
+    //  HOW TO EXPERIMENT (look for the ★ markers below):
+    //    ★ 1. Resting color
+    //    ★ 2. Timing of the gaps
+    //    ★ 3. Mix of event types
+    //    ★ 4. False echoes
+    //    ★ 5. Tab title
+    //    ★ 6. Sound settings
+    // ============================================================
+
+
+    // ------------------------------------------------------------
+    // ★ 1. RESTING COLOR
+    //
+    // Same near-blank paper-white as the waiting piece, so the field
+    // itself never announces that “something is happening.”
+    // ------------------------------------------------------------
+    const restColor = { r: 245, g: 240, b: 232 };
+
+
+    // ------------------------------------------------------------
+    // ★ 2. TIMING
+    //
+    // More often than the waiting piece — but still irregular, so
+    // you cannot settle into a rhythm. Values are milliseconds.
+    // ------------------------------------------------------------
+    const firstDelay = [2500, 7000];
+    const gaps = [
+      { weight: 0.22, min: 900, max: 2800 },
+      { weight: 0.38, min: 3500, max: 9000 },
+      { weight: 0.28, min: 10000, max: 18000 },
+      { weight: 0.12, min: 20000, max: 28000 },
+    ];
+
+
+    // ------------------------------------------------------------
+    // ★ 3. EVENT MIX
+    //
+    // pixel   — one CSS pixel, often ~30ms
+    // region  — a small patch of brightness, easy to doubt
+    // edge    — something at the very rim of the window
+    // sound   — quiet enough to blame on the room
+    // title   — tab becomes “Did you see that?” then returns
+    // ghost   — an “event” so faint it may not be one
+    // ------------------------------------------------------------
+    const eventWeights = {
+      pixel: 0.26,
+      region: 0.20,
+      edge: 0.18,
+      sound: 0.12,
+      title: 0.10,
+      ghost: 0.14,
+    };
+
+
+    // ------------------------------------------------------------
+    // ★ 4. FALSE ECHOES
+    //
+    // After some real events: a long stretch of nothing.
+    // The viewer is primed, so they may invent the next one.
+    // echoChance: probability of entering that silence
+    // echoGap: how long the silence lasts (ms)
+    // ------------------------------------------------------------
+    const echoChance = 0.38;
+    const echoGap = [28000, 38000];
+
+
+    // ------------------------------------------------------------
+    // ★ 5. TAB TITLE
+    //
+    // Resting title is a blank. The question only appears briefly.
+    // ------------------------------------------------------------
+    const restTitle = " ";
+    const flashTitle = "Did you see that?";
+    const titleHold = [450, 1400];
+
+
+    // ------------------------------------------------------------
+    // ★ 6. SOUND SETTINGS
+    //
+    // Quiet enough to be mistaken for the building, a chair, a phone.
+    // masterGain: keep this very low
+    // ------------------------------------------------------------
+    const SOUND = {
+      masterGain: 0.008,
+    };
+
+
+    // ============================================================
+    // Below this line: the engine. You usually won’t need to edit it.
+    // ============================================================
+
+
+    const field = document.getElementById("field");
+    const canvas = document.getElementById("specks");
+    const ctx = canvas.getContext("2d");
+
+    document.title = restTitle;
+
+
+    function rand(min, max) {
+      return min + Math.random() * (max - min);
+    }
+
+    function rgbToCss(rgb) {
+      return "rgb(" + rgb.r + ", " + rgb.g + ", " + rgb.b + ")";
+    }
+
+    function setFieldColor(rgb) {
+      field.style.backgroundColor = rgbToCss(rgb);
+    }
+
+    function pickWeighted(table) {
+      const entries = Array.isArray(table)
+        ? table
+        : Object.entries(table).map(function (pair) {
+            return { type: pair[0], weight: pair[1] };
+          });
+      const total = entries.reduce(function (sum, item) {
+        return sum + item.weight;
+      }, 0);
+      let needle = Math.random() * total;
+      for (var i = 0; i < entries.length; i++) {
+        needle -= entries[i].weight;
+        if (needle <= 0) return entries[i].type || entries[i];
+      }
+      return entries[entries.length - 1].type || entries[entries.length - 1];
+    }
+
+    setFieldColor(restColor);
+
+
+    // --- Canvas -------------------------------------------------
+
+    function sizeCanvas() {
+      const dpr = window.devicePixelRatio || 1;
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      canvas.style.width = w + "px";
+      canvas.style.height = h + "px";
+      canvas.width = Math.max(1, Math.round(w * dpr));
+      canvas.height = Math.max(1, Math.round(h * dpr));
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+    }
+
+    function paintThenClear(draw, hold) {
+      draw();
+      window.setTimeout(function () {
+        ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+      }, hold);
+    }
+
+    // ~30ms pixel. Sometimes a hair longer, sometimes shorter.
+    function drawSpeck(atEdge) {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const size = Math.random() < 0.9 ? 1 : 2;
+      const margin = 3;
+      let x;
+      let y;
+
+      if (atEdge) {
+        const side = Math.floor(Math.random() * 4);
+        if (side === 0) {
+          x = Math.floor(rand(0, margin));
+          y = Math.floor(rand(0, h - size));
+        } else if (side === 1) {
+          x = Math.floor(rand(w - margin - size, w - size));
+          y = Math.floor(rand(0, h - size));
+        } else if (side === 2) {
+          x = Math.floor(rand(0, w - size));
+          y = Math.floor(rand(0, margin));
+        } else {
+          x = Math.floor(rand(0, w - size));
+          y = Math.floor(rand(h - margin - size, h - size));
+        }
+      } else {
+        x = Math.floor(rand(0, w - size));
+        y = Math.floor(rand(0, h - size));
+      }
+
+      const kind = Math.random();
+      if (kind < 0.55) {
+        ctx.fillStyle = "rgba(18, 17, 15, 0.38)";
+      } else if (kind < 0.82) {
+        ctx.fillStyle = "rgba(255, 255, 255, 0.55)";
+      } else {
+        ctx.fillStyle = "rgba(52, 68, 98, 0.28)";
+      }
+
+      const hold = rand(22, 42); // clustered around 30ms
+      paintThenClear(function () {
+        ctx.fillRect(x, y, size, size);
+      }, hold);
+    }
+
+    function drawRegion() {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const rw = Math.floor(rand(10, 42));
+      const rh = Math.floor(rand(8, 28));
+      const x = Math.floor(rand(0, Math.max(1, w - rw)));
+      const y = Math.floor(rand(0, Math.max(1, h - rh)));
+      const lighter = Math.random() < 0.6;
+      ctx.fillStyle = lighter
+        ? "rgba(255, 255, 255, 0.07)"
+        : "rgba(18, 17, 15, 0.05)";
+      const hold = rand(70, 180);
+      paintThenClear(function () {
+        ctx.fillRect(x, y, rw, rh);
+      }, hold);
+    }
+
+    // An event that may not register as one: 1 RGB of brightness,
+    // or a pixel the same temperature as the field, for one frame.
+    function drawGhost() {
+      if (Math.random() < 0.45) {
+        const bump = Math.random() < 0.5 ? 1 : -1;
+        setFieldColor({
+          r: restColor.r + bump,
+          g: restColor.g + bump,
+          b: restColor.b + bump,
+        });
+        window.setTimeout(function () {
+          setFieldColor(restColor);
+        }, rand(40, 90));
+        return;
+      }
+
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      ctx.fillStyle = "rgba(232, 228, 220, 0.35)";
+      const x = Math.floor(rand(0, w - 1));
+      const y = Math.floor(rand(0, h - 1));
+      paintThenClear(function () {
+        ctx.fillRect(x, y, 1, 1);
+      }, rand(16, 34));
+    }
+
+    window.addEventListener("resize", sizeCanvas);
+    sizeCanvas();
+
+
+    // --- Tab title ----------------------------------------------
+
+    function flashTabTitle() {
+      document.title = flashTitle;
+      window.setTimeout(function () {
+        document.title = restTitle;
+      }, rand(titleHold[0], titleHold[1]));
+    }
+
+
+    // --- Sound --------------------------------------------------
+    //
+    // Starts only after the first click / touch / key press
+    // (browsers block autoplay). No on-screen instructions.
+
+    let audioStarted = false;
+    let audioCtx = null;
+    let master = null;
+
+    function makeNoiseBuffer(seconds) {
+      const rate = audioCtx.sampleRate;
+      const length = Math.max(1, Math.floor(rate * seconds));
+      const buffer = audioCtx.createBuffer(1, length, rate);
+      const data = buffer.getChannelData(0);
+      for (var i = 0; i < length; i++) data[i] = Math.random() * 2 - 1;
+      return buffer;
+    }
+
+    function playDistantClick() {
+      const now = audioCtx.currentTime;
+      const src = audioCtx.createBufferSource();
+      src.buffer = makeNoiseBuffer(0.05);
+
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = "bandpass";
+      filter.frequency.value = rand(180, 420);
+      filter.Q.value = 0.6;
+
+      const g = audioCtx.createGain();
+      g.gain.setValueAtTime(0.0001, now);
+      g.gain.exponentialRampToValueAtTime(0.55, now + 0.004);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + 0.045);
+
+      src.connect(filter);
+      filter.connect(g);
+      g.connect(master);
+      src.start(now);
+      src.stop(now + 0.05);
+    }
+
+    function playRoomTick() {
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      osc.type = "sine";
+      osc.frequency.value = rand(900, 1600);
+
+      const g = audioCtx.createGain();
+      g.gain.setValueAtTime(0.0001, now);
+      g.gain.exponentialRampToValueAtTime(0.28, now + 0.003);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + 0.03);
+
+      osc.connect(g);
+      g.connect(master);
+      osc.start(now);
+      osc.stop(now + 0.035);
+    }
+
+    function playHush() {
+      const now = audioCtx.currentTime;
+      const src = audioCtx.createBufferSource();
+      src.buffer = makeNoiseBuffer(0.22);
+
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = "lowpass";
+      filter.frequency.value = rand(140, 260);
+      filter.Q.value = 0.4;
+
+      const g = audioCtx.createGain();
+      g.gain.setValueAtTime(0.0001, now);
+      g.gain.exponentialRampToValueAtTime(0.35, now + 0.05);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + 0.2);
+
+      src.connect(filter);
+      filter.connect(g);
+      g.connect(master);
+      src.start(now);
+      src.stop(now + 0.22);
+    }
+
+    function playSound() {
+      if (!audioStarted || !audioCtx) return false;
+      const r = Math.random();
+      if (r < 0.4) playDistantClick();
+      else if (r < 0.75) playRoomTick();
+      else playHush();
+      return true;
+    }
+
+    function startSound() {
+      if (audioStarted) return;
+      audioStarted = true;
+
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+
+      audioCtx = new AudioContext();
+      if (audioCtx.state === "suspended") {
+        audioCtx.resume();
+      }
+
+      master = audioCtx.createGain();
+      master.gain.value = SOUND.masterGain;
+      master.connect(audioCtx.destination);
+    }
+
+    ["pointerdown", "keydown", "touchstart"].forEach(function (evt) {
+      window.addEventListener(evt, startSound, { passive: true });
+    });
+
+
+    // --- Scheduler ----------------------------------------------
+
+    function nextGap(kind) {
+      if (kind === "first") return rand(firstDelay[0], firstDelay[1]);
+      if (kind === "echo") return rand(echoGap[0], echoGap[1]);
+      const bucket = pickWeighted(gaps);
+      return rand(bucket.min, bucket.max);
+    }
+
+    // Events that are “real enough” to seed a false echo
+    function runEvent() {
+      const type = pickWeighted(eventWeights);
+      let seedEcho = false;
+
+      if (type === "pixel") {
+        drawSpeck(false);
+        seedEcho = true;
+      } else if (type === "region") {
+        drawRegion();
+        seedEcho = true;
+      } else if (type === "edge") {
+        drawSpeck(true);
+        seedEcho = true;
+      } else if (type === "sound") {
+        if (!playSound()) drawSpeck(false);
+        seedEcho = true;
+      } else if (type === "title") {
+        flashTabTitle();
+        seedEcho = true;
+      } else {
+        drawGhost();
+        seedEcho = Math.random() < 0.25;
+      }
+
+      return seedEcho;
+    }
+
+    function schedule(kind) {
+      window.setTimeout(function () {
+        const seedEcho = runEvent();
+        if (seedEcho && Math.random() < echoChance) {
+          schedule("echo");
+        } else {
+          schedule("next");
+        }
+      }, nextGap(kind));
+    }
+
+    schedule("first");
+
+
+    // --- Hide cursor after inactivity ---------------------------
+
+    const IDLE_MS = 3000;
+    let idleTimer = null;
+
+    function markActive() {
+      document.body.classList.remove("idle");
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(function () {
+        document.body.classList.add("idle");
+      }, IDLE_MS);
+    }
+
+    ["mousemove", "mousedown", "keydown", "touchstart", "pointerdown"].forEach(
+      function (evt) {
+        window.addEventListener(evt, markActive, { passive: true });
+      }
+    );
+    markActive();
+
+
+    console.info("Did you see that?");
+  </script>
+</body>
+</html>

@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Were you waiting for something?</title>
+  <style>
+    /*
+      Full-viewport color field.
+      No UI, no borders, no scrollbars — just light filling the window.
+    */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000; /* brief flash-prevention before JS paints the first color */
+    }
+
+    #field {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      /* solid color only — never a gradient */
+      background-color: rgb(0, 0, 0);
+    }
+
+    #specks {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      display: block;
+    }
+
+    /* Cursor is hidden via the .idle class after a few seconds of no input */
+    body.idle,
+    body.idle * {
+      cursor: none !important;
+    }
+  </style>
+</head>
+<body>
+  <div id="field" aria-hidden="true"></div>
+  <canvas id="specks" aria-hidden="true"></canvas>
+
+  <script>
+    // ============================================================
+    //  WERE YOU WAITING FOR SOMETHING?
+    //  A near-blank field. Tiny events at irregular intervals.
+    //
+    //  HOW TO EXPERIMENT (look for the ★ markers below):
+    //    ★ 1. Resting color
+    //    ★ 2. Timing of the gaps
+    //    ★ 3. Mix of event types
+    //    ★ 4. Sound settings
+    // ============================================================
+
+
+    // ------------------------------------------------------------
+    // ★ 1. RESTING COLOR
+    //
+    // Near-blank. Warm paper-white, close enough to a “failed to load”
+    // page that the viewer starts waiting for a site to begin.
+    // Brightness events nudge a few RGB values away from this, then back.
+    // ------------------------------------------------------------
+    const restColor = { r: 245, g: 240, b: 232 };
+    const brightColor = { r: 252, g: 249, b: 244 }; // barely lighter
+    const dimColor = { r: 238, g: 232, b: 222 };    // barely darker
+
+
+    // ------------------------------------------------------------
+    // ★ 2. TIMING
+    //
+    // First event is delayed so waiting has already started.
+    // Later gaps are heavy-tailed: usually quiet, sometimes long enough
+    // that the viewer notices they are still waiting.
+    // Values are milliseconds.
+    // ------------------------------------------------------------
+    const firstDelay = [8000, 18000];
+    const gaps = [
+      { weight: 0.10, min: 800, max: 2500 },     // a near-cluster
+      { weight: 0.30, min: 5000, max: 14000 },
+      { weight: 0.38, min: 16000, max: 36000 },
+      { weight: 0.16, min: 40000, max: 80000 },
+      { weight: 0.06, min: 90000, max: 150000 }, // long enough to feel abandoned
+    ];
+
+
+    // ------------------------------------------------------------
+    // ★ 3. EVENT MIX
+    //
+    // pixel      — one CSS pixel, briefly
+    // brightness — the whole field shifts for a moment
+    // sound      — a click, tick, or hush (after first click/touch/key)
+    // combo      — a visual event with a sound
+    // ------------------------------------------------------------
+    const eventWeights = {
+      pixel: 0.46,
+      brightness: 0.24,
+      sound: 0.18,
+      combo: 0.12,
+    };
+
+
+    // ------------------------------------------------------------
+    // ★ 4. SOUND SETTINGS
+    //
+    // Discrete, very quiet, very short. Not a drone — an event.
+    // masterGain: overall loudness (keep very low)
+    // ------------------------------------------------------------
+    const SOUND = {
+      masterGain: 0.03,
+    };
+
+
+    // ============================================================
+    // Below this line: the engine. You usually won’t need to edit it.
+    // ============================================================
+
+
+    const field = document.getElementById("field");
+    const canvas = document.getElementById("specks");
+    const ctx = canvas.getContext("2d");
+
+
+    function rand(min, max) {
+      return min + Math.random() * (max - min);
+    }
+
+    function rgbToCss(rgb) {
+      return "rgb(" + rgb.r + ", " + rgb.g + ", " + rgb.b + ")";
+    }
+
+    function setFieldColor(rgb) {
+      field.style.backgroundColor = rgbToCss(rgb);
+    }
+
+    function pickWeighted(table) {
+      const entries = Array.isArray(table)
+        ? table
+        : Object.entries(table).map(function (pair) {
+            return { type: pair[0], weight: pair[1] };
+          });
+      const total = entries.reduce(function (sum, item) {
+        return sum + item.weight;
+      }, 0);
+      let needle = Math.random() * total;
+      for (var i = 0; i < entries.length; i++) {
+        needle -= entries[i].weight;
+        if (needle <= 0) return entries[i].type || entries[i];
+      }
+      return entries[entries.length - 1].type || entries[entries.length - 1];
+    }
+
+
+    // Paint the resting color immediately so the page never flash-blacks
+    setFieldColor(restColor);
+
+
+    // --- Canvas (pixel events) ----------------------------------
+
+    function sizeCanvas() {
+      const dpr = window.devicePixelRatio || 1;
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      canvas.style.width = w + "px";
+      canvas.style.height = h + "px";
+      canvas.width = Math.max(1, Math.round(w * dpr));
+      canvas.height = Math.max(1, Math.round(h * dpr));
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+    }
+
+    function drawSpeck() {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const size = Math.random() < 0.85 ? 1 : 2;
+      const x = Math.floor(rand(0, w - size));
+      const y = Math.floor(rand(0, h - size));
+      const hold = rand(50, 200);
+
+      const kind = Math.random();
+      if (kind < 0.7) {
+        ctx.fillStyle = "rgba(18, 17, 15, 0.45)";
+      } else if (kind < 0.9) {
+        ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
+      } else {
+        ctx.fillStyle = "rgba(52, 68, 98, 0.4)";
+      }
+
+      ctx.fillRect(x, y, size, size);
+      window.setTimeout(function () {
+        ctx.clearRect(x - 1, y - 1, size + 2, size + 2);
+      }, hold);
+    }
+
+    window.addEventListener("resize", sizeCanvas);
+    sizeCanvas();
+
+
+    // --- Brightness ---------------------------------------------
+
+    function flashField() {
+      const dim = Math.random() < 0.4;
+      const hold = rand(80, 240);
+      setFieldColor(dim ? dimColor : brightColor);
+      window.setTimeout(function () {
+        setFieldColor(restColor);
+      }, hold);
+    }
+
+
+    // --- Ambient sound (Web Audio API) --------------------------
+    //
+    // Starts only after the first click / touch / key press
+    // (browsers block autoplay). No on-screen instructions.
+
+    let audioStarted = false;
+    let audioCtx = null;
+    let master = null;
+
+    function makeNoiseBuffer(seconds) {
+      const rate = audioCtx.sampleRate;
+      const length = Math.max(1, Math.floor(rate * seconds));
+      const buffer = audioCtx.createBuffer(1, length, rate);
+      const data = buffer.getChannelData(0);
+      for (var i = 0; i < length; i++) data[i] = Math.random() * 2 - 1;
+      return buffer;
+    }
+
+    function playClick() {
+      const now = audioCtx.currentTime;
+      const src = audioCtx.createBufferSource();
+      src.buffer = makeNoiseBuffer(0.04);
+
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = "highpass";
+      filter.frequency.value = 1800;
+
+      const g = audioCtx.createGain();
+      g.gain.setValueAtTime(0.0001, now);
+      g.gain.exponentialRampToValueAtTime(0.7, now + 0.002);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + 0.028);
+
+      src.connect(filter);
+      filter.connect(g);
+      g.connect(master);
+      src.start(now);
+      src.stop(now + 0.04);
+    }
+
+    function playTick() {
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      osc.type = "sine";
+      osc.frequency.value = rand(1600, 3100);
+
+      const g = audioCtx.createGain();
+      g.gain.setValueAtTime(0.0001, now);
+      g.gain.exponentialRampToValueAtTime(0.45, now + 0.004);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + 0.04);
+
+      osc.connect(g);
+      g.connect(master);
+      osc.start(now);
+      osc.stop(now + 0.05);
+    }
+
+    function playHush() {
+      const now = audioCtx.currentTime;
+      const src = audioCtx.createBufferSource();
+      src.buffer = makeNoiseBuffer(0.16);
+
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = "bandpass";
+      filter.frequency.value = rand(240, 520);
+      filter.Q.value = 0.7;
+
+      const g = audioCtx.createGain();
+      g.gain.setValueAtTime(0.0001, now);
+      g.gain.exponentialRampToValueAtTime(0.22, now + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + 0.14);
+
+      src.connect(filter);
+      filter.connect(g);
+      g.connect(master);
+      src.start(now);
+      src.stop(now + 0.16);
+    }
+
+    function playSound() {
+      if (!audioStarted || !audioCtx) return;
+      const r = Math.random();
+      if (r < 0.45) playClick();
+      else if (r < 0.8) playTick();
+      else playHush();
+    }
+
+    function startSound() {
+      if (audioStarted) return;
+      audioStarted = true;
+
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+
+      audioCtx = new AudioContext();
+      if (audioCtx.state === "suspended") {
+        audioCtx.resume();
+      }
+
+      master = audioCtx.createGain();
+      master.gain.value = SOUND.masterGain;
+      master.connect(audioCtx.destination);
+    }
+
+    ["pointerdown", "keydown", "touchstart"].forEach(function (evt) {
+      window.addEventListener(evt, startSound, { passive: true });
+    });
+
+
+    // --- Scheduler ----------------------------------------------
+
+    function nextGap(isFirst) {
+      if (isFirst) return rand(firstDelay[0], firstDelay[1]);
+      const bucket = pickWeighted(gaps);
+      return rand(bucket.min, bucket.max);
+    }
+
+    function runEvent() {
+      const type = pickWeighted(eventWeights);
+
+      if (type === "pixel") {
+        drawSpeck();
+      } else if (type === "brightness") {
+        flashField();
+      } else if (type === "sound") {
+        if (audioStarted) playSound();
+        else drawSpeck();
+      } else {
+        if (Math.random() < 0.55) drawSpeck();
+        else flashField();
+        playSound();
+      }
+    }
+
+    function schedule(isFirst) {
+      window.setTimeout(function () {
+        runEvent();
+        schedule(false);
+      }, nextGap(isFirst));
+    }
+
+    schedule(true);
+
+
+    // --- Hide cursor after inactivity ---------------------------
+
+    const IDLE_MS = 3000; // hide cursor after 3 seconds of no input
+    let idleTimer = null;
+
+    function markActive() {
+      document.body.classList.remove("idle");
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(function () {
+        document.body.classList.add("idle");
+      }, IDLE_MS);
+    }
+
+    ["mousemove", "mousedown", "keydown", "touchstart", "pointerdown"].forEach(
+      function (evt) {
+        window.addEventListener(evt, markActive, { passive: true });
+      }
+    );
+    markActive(); // start the idle countdown on load
+
+
+    // Helpful note for the person editing this file (not shown on screen)
+    console.info("Were you waiting for something?");
+  </script>
+</body>
+</html>

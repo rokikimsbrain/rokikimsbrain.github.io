@@ -218,6 +218,12 @@
               "name": "What made you click?",
               "type": "website",
               "path": "sites/Roki-Jongha-Kim/The-questions-shouldnt-explain-the-piece-the-question-should-explain-the-viewer-project/what-made-you-click/"
+            },
+            {
+              "id": "would-you-do-it-again",
+              "name": "Would you do it again?",
+              "type": "website",
+              "path": "sites/Roki-Jongha-Kim/The-questions-shouldnt-explain-the-piece-the-question-should-explain-the-viewer-project/would-you-do-it-again/"
             }
           ]
         }

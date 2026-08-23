@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#d23924" />
+    <meta name="description" content="Would you do it again?" />
+    <title>Would you do it again?</title>
+    <style>
+      :root {
+        --void: #d23924;
+        --fg: #fff;
+        --ease: cubic-bezier(0.22, 1, 0.36, 1);
+        --sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+        -webkit-touch-callout: none;
+      }
+
+      html,
+      body,
+      #app {
+        height: 100%;
+        height: 100dvh;
+        touch-action: none;
+      }
+
+      html,
+      body {
+        margin: 0;
+        background: var(--void);
+        color: var(--fg);
+        overflow: hidden;
+        cursor: default;
+      }
+
+      body {
+        font-family: var(--sans);
+        font-weight: 300;
+        font-style: normal;
+        -webkit-font-smoothing: antialiased;
+        user-select: none;
+      }
+
+      #app {
+        position: relative;
+      }
+
+      #bloom {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        opacity: 0;
+        pointer-events: none;
+        background: radial-gradient(
+          ellipse 85% 75% at 50% 46%,
+          #f6c8b4 0%,
+          #e85a38 38%,
+          #d23924 100%
+        );
+      }
+
+      #line {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        z-index: 1;
+        margin: 0;
+        width: min(36rem, calc(100% - 3rem));
+        transform: translate(-50%, -50%);
+        text-align: center;
+        font-family: var(--sans);
+        font-size: 0.7rem;
+        font-weight: 300;
+        letter-spacing: 0.04em;
+        line-height: 1.4;
+        color: var(--fg);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 1.4s var(--ease);
+      }
+
+      #line.show {
+        opacity: 1;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        #line {
+          transition-duration: 0.2s;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <div id="bloom"></div>
+      <p id="line"></p>
+    </div>
+    <script>
+      (function () {
+        var bloomEl = document.getElementById("bloom");
+        var lineEl = document.getElementById("line");
+        var holding = false;
+        var count = 0;
+        var promptTimer = 0;
+        var audio = { ctx: null, master: null, ready: false, armed: false };
+        var BED = 0.11;
+        var LIFT = 0.15;
+
+        var rises = [4, 5.4, 4.2, 6.2, 4.5];
+        var blooms = [
+          "radial-gradient(ellipse 85% 75% at 50% 46%, #f6c8b4 0%, #e85a38 38%, #d23924 100%)",
+          "radial-gradient(ellipse 88% 78% at 50% 46%, #f8d0bc 0%, #ec6240 40%, #d23924 100%)",
+          "radial-gradient(ellipse 80% 70% at 48% 44%, #f4c0b8 0%, #e05038 38%, #d23924 100%)",
+          "radial-gradient(ellipse 90% 80% at 52% 48%, #f2c4ac 0%, #e45630 36%, #d23924 100%)",
+          "radial-gradient(ellipse 85% 75% at 50% 46%, #f6c8b4 0%, #e85a38 38%, #d23924 100%)"
+        ];
+
+        function wait(ms) {
+          return new Promise(function (resolve) {
+            setTimeout(resolve, ms);
+          });
+        }
+
+        function showLine(text) {
+          lineEl.textContent = text;
+          lineEl.classList.add("show");
+        }
+
+        function hideLine() {
+          lineEl.classList.remove("show");
+        }
+
+        function riseFor() {
+          return rises[Math.min(count, rises.length - 1)] || 4.8;
+        }
+
+        function bloomFor() {
+          return blooms[count % blooms.length];
+        }
+
+        function afterText() {
+          return count >= 5 ? "What were you expecting?" : count === 0 ? "Press and hold." : "Again?";
+        }
+
+        function ensureAudio() {
+          var AC = window.AudioContext || window.webkitAudioContext;
+          if (!AC) return null;
+          if (!audio.ctx) audio.ctx = new AC();
+          return audio.ctx;
+        }
+
+        function startPatch() {
+          var ctx = ensureAudio();
+          if (!ctx || audio.ready) return ctx;
+          audio.ready = true;
+
+          var master = ctx.createGain();
+          master.gain.value = 0;
+          master.connect(ctx.destination);
+          audio.master = master;
+
+          function drone(freq, type, level) {
+            var osc = ctx.createOscillator();
+            osc.type = type;
+            osc.frequency.value = freq;
+            var gain = ctx.createGain();
+            gain.gain.value = level;
+            osc.connect(gain);
+            gain.connect(master);
+            osc.start();
+          }
+
+          drone(87.3, "sine", 0.15);
+          drone(130.8, "sine", 0.08);
+          drone(174.6, "triangle", 0.025);
+
+          var length = Math.floor(ctx.sampleRate * 2);
+          var buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+          var data = buffer.getChannelData(0);
+          var b0 = 0;
+          var b1 = 0;
+          var b2 = 0;
+          for (var i = 0; i < length; i++) {
+            var white = Math.random() * 2 - 1;
+            b0 = 0.99765 * b0 + white * 0.099046;
+            b1 = 0.963 * b1 + white * 0.2965164;
+            b2 = 0.57 * b2 + white * 1.052691;
+            data[i] = (b0 + b1 + b2 + white * 0.1848) * 0.04;
+          }
+          var noise = ctx.createBufferSource();
+          noise.buffer = buffer;
+          noise.loop = true;
+          var filter = ctx.createBiquadFilter();
+          filter.type = "lowpass";
+          filter.frequency.value = 240;
+          filter.Q.value = 0.6;
+          var noiseGain = ctx.createGain();
+          noiseGain.gain.value = 0.16;
+          noise.connect(filter);
+          filter.connect(noiseGain);
+          noiseGain.connect(master);
+
+          var lfo = ctx.createOscillator();
+          lfo.type = "sine";
+          lfo.frequency.value = 0.06;
+          var lfoGain = ctx.createGain();
+          lfoGain.gain.value = 60;
+          lfo.connect(lfoGain);
+          lfoGain.connect(filter.frequency);
+
+          var now = ctx.currentTime;
+          master.gain.setValueAtTime(0, now);
+          master.gain.linearRampToValueAtTime(BED, now + 2.2);
+
+          noise.start();
+          lfo.start();
+          return ctx;
+        }
+
+        function unlockAudio() {
+          var ctx = ensureAudio();
+          if (!ctx) return Promise.resolve();
+          return ctx.resume().then(function () {
+            startPatch();
+          }).catch(function () {});
+        }
+
+        function armAudio() {
+          if (audio.armed) return;
+          audio.armed = true;
+          function go() {
+            document.removeEventListener("pointerdown", go);
+            document.removeEventListener("keydown", go);
+            document.removeEventListener("touchstart", go);
+            unlockAudio();
+          }
+          document.addEventListener("pointerdown", go);
+          document.addEventListener("keydown", go);
+          document.addEventListener("touchstart", go, { passive: true });
+          unlockAudio();
+        }
+
+        function swell(seconds) {
+          var ctx = startPatch();
+          if (!ctx || !audio.master) return;
+          ctx.resume();
+          var now = ctx.currentTime;
+          var current = audio.master.gain.value;
+          audio.master.gain.cancelScheduledValues(now);
+          audio.master.gain.setValueAtTime(current, now);
+          audio.master.gain.linearRampToValueAtTime(LIFT, now + seconds);
+        }
+
+        function recede() {
+          if (!audio.ctx || !audio.master) return;
+          var now = audio.ctx.currentTime;
+          var current = audio.master.gain.value;
+          audio.master.gain.cancelScheduledValues(now);
+          audio.master.gain.setValueAtTime(current, now);
+          audio.master.gain.linearRampToValueAtTime(BED, now + 0.95);
+        }
+
+        function beginHold() {
+          if (holding) return;
+          holding = true;
+          window.clearTimeout(promptTimer);
+          hideLine();
+          var seconds = riseFor();
+          bloomEl.style.background = bloomFor();
+          bloomEl.style.transition = "opacity " + seconds + "s cubic-bezier(0.22, 1, 0.36, 1)";
+          bloomEl.style.opacity = "1";
+          swell(seconds);
+        }
+
+        function endHold() {
+          if (!holding) return;
+          holding = false;
+          count += 1;
+          bloomEl.style.transition = "opacity 0.95s cubic-bezier(0.22, 1, 0.36, 1)";
+          bloomEl.style.opacity = "0";
+          recede();
+          window.clearTimeout(promptTimer);
+          promptTimer = window.setTimeout(function () {
+            if (!holding) showLine(afterText());
+          }, 1100);
+        }
+
+        window.addEventListener("pointerdown", function (event) {
+          event.preventDefault();
+          beginHold();
+        });
+        window.addEventListener("pointerup", endHold);
+        window.addEventListener("pointercancel", endHold);
+        window.addEventListener("blur", endHold);
+
+        window.addEventListener("keydown", function (event) {
+          if (event.repeat) return;
+          if (event.code === "Space" || event.key === " ") {
+            event.preventDefault();
+            beginHold();
+          }
+        });
+        window.addEventListener("keyup", function (event) {
+          if (event.code === "Space" || event.key === " ") {
+            event.preventDefault();
+            endHold();
+          }
+        });
+
+        armAudio();
+
+        wait(900).then(function () {
+          showLine("Press and hold.");
+        });
+      })();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#52a3a8" />
+    <meta name="description" content="What were you going to say?" />
+    <title>What were you going to say?</title>
+    <style>
+      :root {
+        --field: #52a3a8;
+        --fg: #fff;
+        --ease: cubic-bezier(0.22, 1, 0.36, 1);
+        --sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      html,
+      body,
+      #app {
+        height: 100%;
+        height: 100dvh;
+      }
+
+      html,
+      body {
+        margin: 0;
+        background: var(--field);
+        color: var(--fg);
+        overflow: hidden;
+        cursor: text;
+      }
+
+      body {
+        font-family: var(--sans);
+        font-weight: 300;
+        font-style: normal;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      #app {
+        position: relative;
+        display: grid;
+        place-items: center;
+      }
+
+      #stage {
+        position: relative;
+        z-index: 1;
+        width: min(32rem, calc(100% - 3rem));
+        min-height: 1.4em;
+        text-align: center;
+        font-size: 0.95rem;
+        font-weight: 300;
+        letter-spacing: 0.03em;
+        line-height: 1.7;
+        pointer-events: none;
+      }
+
+      .word {
+        display: inline;
+        margin: 0 0.18em;
+        opacity: 1;
+        transition: opacity 2.4s var(--ease);
+      }
+
+      .word.gone {
+        opacity: 0;
+      }
+
+      .caret {
+        display: inline-block;
+        width: 1px;
+        height: 0.95em;
+        margin-left: 1px;
+        vertical-align: -0.08em;
+        background: var(--fg);
+        animation: blink 1.05s steps(1, end) infinite;
+      }
+
+      #app.asking .caret,
+      #app.asking #stage {
+        opacity: 0;
+      }
+
+      #line {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        z-index: 2;
+        margin: 0;
+        width: min(36rem, calc(100% - 3rem));
+        transform: translate(-50%, -50%);
+        text-align: center;
+        font-family: var(--sans);
+        font-size: 0.7rem;
+        font-weight: 300;
+        letter-spacing: 0.04em;
+        line-height: 1.4;
+        color: var(--fg);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 1.6s var(--ease);
+      }
+
+      #line.show {
+        opacity: 1;
+      }
+
+      #catch {
+        position: absolute;
+        inset: 0;
+        z-index: 3;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        opacity: 0;
+        resize: none;
+        outline: none;
+        background: transparent;
+        color: transparent;
+        caret-color: transparent;
+        font-size: 16px;
+      }
+
+      @keyframes blink {
+        0%,
+        49% {
+          opacity: 1;
+        }
+        50%,
+        100% {
+          opacity: 0;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .word,
+        #line {
+          transition-duration: 0.2s;
+        }
+
+        .caret {
+          animation: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <div id="stage"></div>
+      <p id="line"></p>
+      <textarea
+        id="catch"
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="off"
+        spellcheck="false"
+        aria-label="Write"
+      ></textarea>
+    </div>
+    <script>
+      (function () {
+        var app = document.getElementById("app");
+        var stage = document.getElementById("stage");
+        var lineEl = document.getElementById("line");
+        var catcher = document.getElementById("catch");
+        var words = [];
+        var current = "";
+        var nextId = 1;
+        var typed = false;
+        var asking = false;
+        var idleTimer = 0;
+        var audio = { ctx: null, master: null, started: false, armed: false };
+
+        function wait(ms) {
+          return new Promise(function (resolve) {
+            setTimeout(resolve, ms);
+          });
+        }
+
+        function escapeHtml(text) {
+          return text
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+        }
+
+        function render() {
+          var html = "";
+          for (var i = 0; i < words.length; i++) {
+            html +=
+              '<span class="word' +
+              (words[i].gone ? " gone" : "") +
+              '">' +
+              escapeHtml(words[i].text) +
+              "</span>";
+          }
+          if (current) {
+            html += '<span class="word live">' + escapeHtml(current) + "</span>";
+          }
+          html += '<span class="caret"></span>';
+          stage.innerHTML = html;
+        }
+
+        function linger() {
+          return 2000 + Math.random() * 3000;
+        }
+
+        function releaseWord(word) {
+          window.setTimeout(function () {
+            word.gone = true;
+            render();
+            window.setTimeout(function () {
+              words = words.filter(function (item) {
+                return item.id !== word.id;
+              });
+              render();
+            }, 2500);
+          }, linger());
+        }
+
+        function flush() {
+          var text = current.replace(/\s+/g, "");
+          current = "";
+          if (!text) {
+            render();
+            return;
+          }
+          var word = { id: nextId++, text: text, gone: false };
+          words.push(word);
+          render();
+          releaseWord(word);
+        }
+
+        function showLine(text) {
+          lineEl.textContent = text;
+          lineEl.classList.add("show");
+        }
+
+        function hideLine() {
+          lineEl.classList.remove("show");
+        }
+
+        function resetIdle() {
+          window.clearTimeout(idleTimer);
+          if (asking || !typed) return;
+          idleTimer = window.setTimeout(ask, 5500);
+        }
+
+        function ask() {
+          if (asking || !typed) return;
+          asking = true;
+          window.clearTimeout(idleTimer);
+          if (current) flush();
+          app.classList.add("asking");
+          words = [];
+          current = "";
+          render();
+          showLine("What were you going to say?");
+          wait(4200).then(function () {
+            hideLine();
+            return wait(1600);
+          }).then(function () {
+            typed = false;
+            asking = false;
+            app.classList.remove("asking");
+            catcher.value = "";
+            render();
+            catcher.focus();
+          });
+        }
+
+        function onKey(event) {
+          unlockAudio();
+          if (asking) {
+            event.preventDefault();
+            return;
+          }
+          if (event.key === "Backspace") {
+            event.preventDefault();
+            current = current.slice(0, -1);
+            render();
+            bump();
+            return;
+          }
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            flush();
+            bump();
+            return;
+          }
+          if (event.key.length !== 1 || event.metaKey || event.ctrlKey) return;
+          event.preventDefault();
+          typed = true;
+          current += event.key;
+          render();
+          bump();
+        }
+
+        function bump() {
+          catcher.value = "";
+          resetIdle();
+        }
+
+        function ensureAudio() {
+          var AC = window.AudioContext || window.webkitAudioContext;
+          if (!AC) return null;
+          if (!audio.ctx) audio.ctx = new AC();
+          return audio.ctx;
+        }
+
+        function startAmbient() {
+          var ctx = ensureAudio();
+          if (!ctx || audio.started) return;
+          audio.started = true;
+
+          var master = ctx.createGain();
+          master.gain.value = 0;
+          master.connect(ctx.destination);
+          audio.master = master;
+
+          function drone(freq, type, level) {
+            var osc = ctx.createOscillator();
+            osc.type = type;
+            osc.frequency.value = freq;
+            var gain = ctx.createGain();
+            gain.gain.value = level;
+            osc.connect(gain);
+            gain.connect(master);
+            osc.start();
+          }
+
+          drone(92.5, "sine", 0.14);
+          drone(138.6, "sine", 0.07);
+          drone(185, "triangle", 0.02);
+
+          var length = Math.floor(ctx.sampleRate * 2);
+          var buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+          var data = buffer.getChannelData(0);
+          var b0 = 0;
+          var b1 = 0;
+          var b2 = 0;
+          for (var i = 0; i < length; i++) {
+            var white = Math.random() * 2 - 1;
+            b0 = 0.99765 * b0 + white * 0.099046;
+            b1 = 0.963 * b1 + white * 0.2965164;
+            b2 = 0.57 * b2 + white * 1.052691;
+            data[i] = (b0 + b1 + b2 + white * 0.1848) * 0.04;
+          }
+          var noise = ctx.createBufferSource();
+          noise.buffer = buffer;
+          noise.loop = true;
+          var filter = ctx.createBiquadFilter();
+          filter.type = "lowpass";
+          filter.frequency.value = 220;
+          filter.Q.value = 0.65;
+          var noiseGain = ctx.createGain();
+          noiseGain.gain.value = 0.15;
+          noise.connect(filter);
+          filter.connect(noiseGain);
+          noiseGain.connect(master);
+
+          var lfo = ctx.createOscillator();
+          lfo.type = "sine";
+          lfo.frequency.value = 0.055;
+          var lfoGain = ctx.createGain();
+          lfoGain.gain.value = 55;
+          lfo.connect(lfoGain);
+          lfoGain.connect(filter.frequency);
+
+          var now = ctx.currentTime;
+          master.gain.setValueAtTime(0, now);
+          master.gain.linearRampToValueAtTime(0.11, now + 2.4);
+
+          noise.start();
+          lfo.start();
+        }
+
+        function unlockAudio() {
+          var ctx = ensureAudio();
+          if (!ctx) return;
+          ctx.resume().then(startAmbient).catch(function () {});
+        }
+
+        function armAudio() {
+          if (audio.armed) return;
+          audio.armed = true;
+          function go() {
+            document.removeEventListener("pointerdown", go);
+            document.removeEventListener("keydown", go);
+            unlockAudio();
+          }
+          document.addEventListener("pointerdown", go);
+          document.addEventListener("keydown", go);
+          unlockAudio();
+        }
+
+        catcher.addEventListener("keydown", onKey);
+        catcher.addEventListener("pointerdown", unlockAudio);
+        catcher.addEventListener("blur", function () {
+          if (!asking) catcher.focus();
+        });
+
+        armAudio();
+        render();
+        catcher.focus();
+      })();
+    </script>
+  </body>
+</html>

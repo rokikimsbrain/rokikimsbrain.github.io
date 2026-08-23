@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0c4d56" />
+    <meta name="description" content="Can we do this together?" />
+    <title>Can we do this together?</title>
+    <style>
+      :root {
+        --teal: #0c4d56;
+        --fg: #fff;
+        --ease: cubic-bezier(0.22, 1, 0.36, 1);
+        --sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      html,
+      body,
+      #app {
+        height: 100%;
+        height: 100dvh;
+      }
+
+      html,
+      body {
+        margin: 0;
+        background: var(--teal);
+        color: var(--fg);
+        overflow: hidden;
+        cursor: default;
+        touch-action: none;
+      }
+
+      body {
+        font-family: var(--sans);
+        font-weight: 300;
+        font-style: normal;
+        -webkit-font-smoothing: antialiased;
+        user-select: none;
+      }
+
+      #app {
+        position: relative;
+      }
+
+      #field {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 22vmin;
+        height: 22vmin;
+        margin: -11vmin 0 0 -11vmin;
+        border-radius: 50%;
+        pointer-events: none;
+        opacity: 0;
+        transform: translate(50vw, 50vh) scale(0.4);
+        background: #d4eef8;
+        transition: opacity 1.8s var(--ease);
+      }
+
+      #app.live #field {
+        opacity: 1;
+      }
+
+      #app.break #field {
+        opacity: 0.2;
+      }
+
+      #line {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        z-index: 2;
+        margin: 0;
+        width: min(36rem, calc(100% - 3rem));
+        transform: translate(-50%, -50%);
+        text-align: center;
+        font-size: 0.7rem;
+        font-weight: 300;
+        letter-spacing: 0.04em;
+        line-height: 1.4;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 2s var(--ease);
+      }
+
+      #line.show {
+        opacity: 1;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        #field,
+        #line {
+          transition-duration: 0.2s;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <div id="field"></div>
+      <p id="line"></p>
+    </div>
+    <script>
+      (function () {
+        var app = document.getElementById("app");
+        var field = document.getElementById("field");
+        var lineEl = document.getElementById("line");
+        var live = false;
+        var asked = false;
+        var holding = false;
+        var startAt = 0;
+        var lastT = 0;
+        var lastX = 0.5;
+        var lastY = 0.5;
+        var mx = 0.5;
+        var my = 0.5;
+        var speed = 0;
+        var form = 0;
+        var wander = Math.random() * Math.PI * 2;
+        var wanderRate = 0.35;
+        var pulses = [];
+        var lastPulse = 0;
+        var lastMove = 0;
+        var brokenUntil = 0;
+        var blob = { x: 0.5, y: 0.5, vx: 0, vy: 0 };
+        var audio = {
+          ctx: null,
+          master: null,
+          started: false,
+          near: null,
+          hold: null,
+          nearG: null,
+          holdG: null
+        };
+
+        function now() {
+          return performance.now();
+        }
+
+        function clamp(n, a, b) {
+          return Math.max(a, Math.min(b, n));
+        }
+
+        function ensureAudio() {
+          var AC = window.AudioContext || window.webkitAudioContext;
+          if (!AC) return null;
+          if (!audio.ctx) audio.ctx = new AC();
+          return audio.ctx;
+        }
+
+        function startAudio() {
+          var ctx = ensureAudio();
+          if (!ctx || audio.started) return;
+          audio.started = true;
+
+          var master = ctx.createGain();
+          master.gain.value = 0;
+          master.connect(ctx.destination);
+          audio.master = master;
+
+          function drone(freq, type, level) {
+            var osc = ctx.createOscillator();
+            osc.type = type;
+            osc.frequency.value = freq;
+            var gain = ctx.createGain();
+            gain.gain.value = level;
+            osc.connect(gain);
+            gain.connect(master);
+            osc.start();
+          }
+
+          drone(72.5, "sine", 0.14);
+          drone(108.8, "sine", 0.07);
+          drone(145, "triangle", 0.02);
+
+          var length = Math.floor(ctx.sampleRate * 2);
+          var buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+          var data = buffer.getChannelData(0);
+          var b0 = 0;
+          var b1 = 0;
+          var b2 = 0;
+          var i;
+          for (i = 0; i < length; i++) {
+            var white = Math.random() * 2 - 1;
+            b0 = 0.99765 * b0 + white * 0.099046;
+            b1 = 0.963 * b1 + white * 0.2965164;
+            b2 = 0.57 * b2 + white * 1.052691;
+            data[i] = (b0 + b1 + b2 + white * 0.1848) * 0.035;
+          }
+          var noise = ctx.createBufferSource();
+          noise.buffer = buffer;
+          noise.loop = true;
+          var filter = ctx.createBiquadFilter();
+          filter.type = "lowpass";
+          filter.frequency.value = 210;
+          filter.Q.value = 0.65;
+          var ng = ctx.createGain();
+          ng.gain.value = 0.14;
+          noise.connect(filter);
+          filter.connect(ng);
+          ng.connect(master);
+
+          var lfo = ctx.createOscillator();
+          lfo.type = "sine";
+          lfo.frequency.value = 0.05;
+          var lfoG = ctx.createGain();
+          lfoG.gain.value = 48;
+          lfo.connect(lfoG);
+          lfoG.connect(filter.frequency);
+
+          var near = ctx.createOscillator();
+          near.type = "sine";
+          near.frequency.value = 196;
+          var nearG = ctx.createGain();
+          nearG.gain.value = 0;
+          near.connect(nearG);
+          nearG.connect(master);
+          audio.near = near;
+          audio.nearG = nearG;
+
+          var holdOsc = ctx.createOscillator();
+          holdOsc.type = "sine";
+          holdOsc.frequency.value = 294;
+          var holdG = ctx.createGain();
+          holdG.gain.value = 0;
+          holdOsc.connect(holdG);
+          holdG.connect(master);
+          audio.hold = holdOsc;
+          audio.holdG = holdG;
+
+          var t = ctx.currentTime;
+          master.gain.setValueAtTime(0, t);
+          master.gain.linearRampToValueAtTime(0.11, t + 2.2);
+
+          noise.start();
+          lfo.start();
+          near.start();
+          holdOsc.start();
+        }
+
+        function unlockAudio() {
+          var ctx = ensureAudio();
+          if (!ctx) return;
+          ctx.resume().then(startAudio).catch(function () {});
+        }
+
+        function setNear(amount, freq) {
+          if (!audio.ctx || !audio.nearG) return;
+          var t = audio.ctx.currentTime;
+          audio.nearG.gain.setTargetAtTime(amount, t, 0.08);
+          audio.near.frequency.setTargetAtTime(freq, t, 0.12);
+        }
+
+        function setHold(on) {
+          if (!audio.ctx || !audio.holdG) return;
+          audio.holdG.gain.setTargetAtTime(on ? 0.045 : 0, audio.ctx.currentTime, 0.12);
+        }
+
+        function crack() {
+          if (!audio.ctx || !audio.master) return;
+          var ctx = audio.ctx;
+          var t = ctx.currentTime;
+          var len = Math.floor(ctx.sampleRate * 0.18);
+          var buffer = ctx.createBuffer(1, len, ctx.sampleRate);
+          var data = buffer.getChannelData(0);
+          var i;
+          for (i = 0; i < len; i++) {
+            data[i] = (Math.random() * 2 - 1) * (1 - i / len);
+          }
+          var src = ctx.createBufferSource();
+          src.buffer = buffer;
+          var f = ctx.createBiquadFilter();
+          f.type = "highpass";
+          f.frequency.value = 900;
+          var g = ctx.createGain();
+          g.gain.setValueAtTime(0.08, t);
+          g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+          src.connect(f);
+          f.connect(g);
+          g.connect(audio.master);
+          src.start();
+        }
+
+        function notePulse() {
+          var t = now();
+          if (t - lastPulse < 180) return;
+          if (lastPulse) {
+            pulses.push(t - lastPulse);
+            if (pulses.length > 6) pulses.shift();
+            if (pulses.length >= 4) {
+              var sum = 0;
+              var i;
+              for (i = 0; i < pulses.length; i++) sum += pulses[i];
+              var mean = sum / pulses.length;
+              var spread = 0;
+              for (i = 0; i < pulses.length; i++) {
+                spread += Math.abs(pulses[i] - mean);
+              }
+              if (spread / pulses.length < mean * 0.28) {
+                wanderRate = clamp(1000 / mean, 0.18, 1.1) * (0.85 + Math.random() * 0.3);
+              }
+            }
+          }
+          lastPulse = t;
+        }
+
+        function wake() {
+          if (live) return;
+          live = true;
+          startAt = now();
+          lastT = startAt;
+          app.classList.add("live");
+          unlockAudio();
+          loop(startAt);
+        }
+
+        function destroy() {
+          form = 0;
+          app.classList.add("break");
+          window.setTimeout(function () {
+            app.classList.remove("break");
+          }, 280);
+          crack();
+        }
+
+        function loop(t) {
+          var dt = Math.min(0.05, (t - lastT) / 1000 || 0.016);
+          lastT = t;
+          if (now() - lastMove > 90) speed *= Math.pow(0.12, dt);
+
+          wander += dt * wanderRate * (0.7 + Math.sin(t * 0.0004) * 0.3);
+          blob.vx += Math.cos(wander) * 0.00009;
+          blob.vy += Math.sin(wander * 0.87) * 0.00009;
+
+          var dx = mx - blob.x;
+          var dy = my - blob.y;
+          var dist = Math.sqrt(dx * dx + dy * dy) || 0.0001;
+
+          if (speed > 0.002) {
+            blob.vx += dx * 0.00115;
+            blob.vy += dy * 0.00115;
+            blob.vx -= dx * 0.00045;
+            blob.vy += 0.00008 * Math.sin(t * 0.001);
+          }
+
+          blob.vx *= 0.965;
+          blob.vy *= 0.965;
+          blob.x = clamp(blob.x + blob.vx, 0.12, 0.88);
+          blob.y = clamp(blob.y + blob.vy, 0.14, 0.86);
+
+          if (speed < 0.35 && speed > 0.015) {
+            form = clamp(form + dt * 0.18, 0, 1);
+          } else if (speed > 2.1) {
+            if (form > 0.12 && now() > brokenUntil) {
+              destroy();
+              brokenUntil = now() + 900;
+            } else form = clamp(form - dt * 0.8, 0, 1);
+          }
+
+          if (holding) form = clamp(form + dt * 0.12, 0, 1);
+
+          var closeness = clamp(1 - dist * 2.2, 0, 1);
+          setNear(closeness * 0.05, 160 + closeness * 120 + form * 40);
+          setHold(holding);
+
+          var scale = 0.55 + form * 0.85;
+          field.style.transform =
+            "translate(" + blob.x * 100 + "vw, " + blob.y * 100 + "vh) scale(" + scale + ")";
+
+          if (!asked && now() - startAt > 38000) {
+            asked = true;
+            lineEl.textContent = "Was I following you?";
+            lineEl.classList.add("show");
+          }
+
+          requestAnimationFrame(loop);
+        }
+
+        window.addEventListener("pointermove", function (event) {
+          wake();
+          var x = event.clientX / window.innerWidth;
+          var y = event.clientY / window.innerHeight;
+          var tMove = now();
+          var dt = Math.max(0.008, (tMove - lastMove) / 1000);
+          var dx = x - lastX;
+          var dy = y - lastY;
+          speed = Math.sqrt(dx * dx + dy * dy) / dt;
+          lastMove = tMove;
+          lastX = x;
+          lastY = y;
+          mx = x;
+          my = y;
+          if (speed > 0.4) notePulse();
+        });
+
+        window.addEventListener("pointerdown", function () {
+          wake();
+          holding = true;
+          notePulse();
+          unlockAudio();
+        });
+
+        window.addEventListener("pointerup", function () {
+          holding = false;
+        });
+        window.addEventListener("pointercancel", function () {
+          holding = false;
+        });
+        window.addEventListener("blur", function () {
+          holding = false;
+        });
+      })();
+    </script>
+  </body>
+</html>

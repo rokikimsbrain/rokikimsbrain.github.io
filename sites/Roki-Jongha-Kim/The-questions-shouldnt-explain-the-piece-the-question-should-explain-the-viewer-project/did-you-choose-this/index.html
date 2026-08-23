@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#e0562c" />
+    <meta name="description" content="How much of what you just did was actually your decision?" />
+    <title>lastrow</title>
+    <style>
+      :root {
+        --orange: #e0562c;
+        --bg: var(--orange);
+        --fg: #fff;
+        --fg-mute: #fff;
+        --seam: #fff;
+        --warm: var(--orange);
+        --cool: var(--orange);
+        --ease: cubic-bezier(0.22, 1, 0.36, 1);
+        --sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      html,
+      body,
+      #app {
+        height: 100%;
+        height: 100dvh;
+        touch-action: manipulation;
+      }
+
+      html,
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+        overflow: hidden;
+      }
+
+      body {
+        font-family: var(--sans);
+        font-weight: 300;
+        font-style: normal;
+        -webkit-font-smoothing: antialiased;
+        user-select: none;
+      }
+
+      #app {
+        position: relative;
+        isolation: isolate;
+      }
+
+      #tint {
+        position: absolute;
+        inset: 0;
+        background: var(--orange);
+        z-index: 0;
+      }
+
+      #tint.warm,
+      #tint.cool {
+        background: var(--orange);
+      }
+
+      #seam {
+        position: absolute;
+        top: 44%;
+        bottom: 44%;
+        left: 50%;
+        width: 1px;
+        background: var(--seam);
+        transform: translateX(-50%) scaleY(0);
+        transform-origin: center;
+        opacity: 0;
+        z-index: 1;
+        pointer-events: none;
+        transition: opacity 1.1s var(--ease), transform 1.4s var(--ease);
+      }
+
+      #seam.on {
+        opacity: 1;
+        transform: translateX(-50%) scaleY(1);
+      }
+
+      #choice {
+        position: absolute;
+        inset: 0;
+        z-index: 3;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+      }
+
+      #choice[hidden] {
+        display: none;
+      }
+
+      .side {
+        appearance: none;
+        border: 0;
+        background: transparent;
+        color: var(--fg);
+        margin: 0;
+        padding: 0;
+        cursor: pointer;
+        display: grid;
+        place-items: center;
+        font-family: var(--sans);
+        font-size: 0.55rem;
+        font-weight: 300;
+        letter-spacing: 0.55em;
+        text-transform: uppercase;
+        text-indent: 0.55em;
+        opacity: 0;
+        transform: translateY(6px);
+        transition: opacity 0.9s var(--ease), transform 0.9s var(--ease),
+          background-color 0.6s var(--ease);
+      }
+
+      #choice.show .side {
+        opacity: 0.88;
+        transform: translateY(0);
+      }
+
+      #choice.show .side:hover,
+      #choice.show .side:focus-visible {
+        opacity: 1;
+        background: transparent;
+        outline: none;
+      }
+
+      #choice.picked .side {
+        pointer-events: none;
+      }
+
+      #choice.picked .side.held {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      #choice.picked .side.gone,
+      #choice.picked .side.held.exit {
+        opacity: 0;
+      }
+
+      #line {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        z-index: 4;
+        margin: 0;
+        width: min(36rem, calc(100% - 3rem));
+        transform: translate(-50%, -50%);
+        text-align: center;
+        font-family: var(--sans);
+        font-style: normal;
+        font-size: 0.7rem;
+        font-weight: 300;
+        letter-spacing: 0.04em;
+        line-height: 1.35;
+        color: var(--fg);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 1.6s var(--ease);
+      }
+
+      #line.show {
+        opacity: 1;
+      }
+
+      #line.question {
+        font-size: 0.7rem;
+      }
+
+      #stage {
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        pointer-events: none;
+      }
+
+      .dot {
+        position: absolute;
+        top: 50%;
+        width: 3px;
+        height: 3px;
+        border-radius: 50%;
+        background: var(--fg);
+        transform: translate(-50%, -50%) scale(0.4);
+        opacity: 0;
+        animation: dot-in 2.2s var(--ease) forwards;
+      }
+
+      .dot.left {
+        left: 42%;
+      }
+
+      .dot.right {
+        left: 58%;
+      }
+
+      .rule {
+        position: absolute;
+        top: 50%;
+        left: 42%;
+        right: 42%;
+        height: 1px;
+        background: var(--fg);
+        transform: scaleX(0);
+        opacity: 0.55;
+        animation: rule-in 2.4s var(--ease) forwards;
+      }
+
+      #again {
+        appearance: none;
+        position: absolute;
+        left: 50%;
+        bottom: max(2.2rem, env(safe-area-inset-bottom));
+        z-index: 5;
+        transform: translateX(-50%);
+        border: 0;
+        background: transparent;
+        color: var(--fg-mute);
+        font-family: var(--sans);
+        font-weight: 300;
+        font-size: 0.55rem;
+        letter-spacing: 0.28em;
+        text-indent: 0.28em;
+        cursor: pointer;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 1.4s var(--ease), color 0.4s var(--ease);
+      }
+
+      #again.show {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      #again:hover,
+      #again:focus-visible {
+        color: var(--fg);
+        outline: none;
+      }
+
+      #again[hidden] {
+        display: none;
+      }
+
+      @keyframes dot-in {
+        0% {
+          opacity: 0;
+          transform: translate(-50%, -50%) scale(0.4);
+        }
+        18%,
+        70% {
+          opacity: 1;
+          transform: translate(-50%, -50%) scale(1);
+        }
+        100% {
+          opacity: 0;
+          transform: translate(-50%, -50%) scale(1);
+        }
+      }
+
+      @keyframes rule-in {
+        0% {
+          transform: scaleX(0);
+          opacity: 0;
+        }
+        28%,
+        72% {
+          transform: scaleX(1);
+          opacity: 0.45;
+        }
+        100% {
+          transform: scaleX(1);
+          opacity: 0;
+        }
+      }
+
+      @media (max-width: 640px) {
+        .side {
+          letter-spacing: 0.32em;
+          text-indent: 0.32em;
+          font-size: 0.5rem;
+        }
+
+        .dot.left {
+          left: 38%;
+        }
+
+        .dot.right {
+          left: 62%;
+        }
+
+        .rule {
+          left: 12%;
+          right: 12%;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .side,
+        #line,
+        #seam,
+        #tint,
+        #again {
+          transition-duration: 0.2s;
+        }
+
+        .dot,
+        .rule {
+          animation-duration: 0.8s;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <div id="tint" aria-hidden="true"></div>
+      <div id="seam" aria-hidden="true"></div>
+      <div id="stage" aria-hidden="true"></div>
+      <p id="line"></p>
+      <div id="choice" hidden>
+        <button type="button" class="side" id="left" tabindex="-1">Left</button>
+        <button type="button" class="side" id="right" tabindex="-1">Right</button>
+      </div>
+      <button type="button" id="again" hidden>again</button>
+    </div>
+    <script>
+      (function () {
+        var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        var SPLIT = ["echo", "dot", "tint", "echo", "none"];
+        var MERGE = ["none", "line", "still", "line", "none"];
+
+        var choiceEl = document.getElementById("choice");
+        var leftBtn = document.getElementById("left");
+        var rightBtn = document.getElementById("right");
+        var lineEl = document.getElementById("line");
+        var stageEl = document.getElementById("stage");
+        var seamEl = document.getElementById("seam");
+        var tintEl = document.getElementById("tint");
+        var againBtn = document.getElementById("again");
+
+        choiceEl.tabIndex = -1;
+
+        function playIndex() {
+          var n = parseInt(sessionStorage.getItem("lastrow.plays") || "0", 10);
+          return isFinite(n) ? n : 0;
+        }
+
+        function bumpPlays() {
+          sessionStorage.setItem("lastrow.plays", String(playIndex() + 1));
+        }
+
+        function gatesFor(play) {
+          if (play === 0) return ["merge", "split", "merge", "split", "merge"];
+          if (play === 1) return ["split", "merge", "split", "merge", "split"];
+          var pool = ["merge", "split", "merge", "split", "merge"];
+          for (var i = pool.length - 1; i > 0; i--) {
+            var j = Math.floor(Math.random() * (i + 1));
+            var tmp = pool[i];
+            pool[i] = pool[j];
+            pool[j] = tmp;
+          }
+          return pool;
+        }
+
+        function happenFor(index, gate) {
+          var list = gate === "split" ? SPLIT : MERGE;
+          return list[index] || "none";
+        }
+
+        function sleep(ms) {
+          return new Promise(function (resolve) {
+            setTimeout(resolve, reduced ? Math.min(ms, 180) : ms);
+          });
+        }
+
+        function paint() {
+          return new Promise(function (resolve) {
+            requestAnimationFrame(function () {
+              requestAnimationFrame(resolve);
+            });
+          });
+        }
+
+        function wait(ms) {
+          return new Promise(function (resolve) {
+            setTimeout(resolve, ms);
+          });
+        }
+
+        function hold(started, ms) {
+          var left = ms - (performance.now() - started);
+          return left > 0 ? sleep(left) : Promise.resolve();
+        }
+
+        var audio = { ctx: null, master: null, started: false, armed: false };
+
+        function ensureAudio() {
+          var AC = window.AudioContext || window.webkitAudioContext;
+          if (!AC) return null;
+          if (!audio.ctx) audio.ctx = new AC();
+          return audio.ctx;
+        }
+
+        function startAmbient() {
+          var ctx = ensureAudio();
+          if (!ctx || audio.started) return;
+          audio.started = true;
+
+          var master = ctx.createGain();
+          master.gain.value = 0;
+          master.connect(ctx.destination);
+          audio.master = master;
+
+          function drone(freq, type, level) {
+            var osc = ctx.createOscillator();
+            osc.type = type;
+            osc.frequency.value = freq;
+            var gain = ctx.createGain();
+            gain.gain.value = level;
+            osc.connect(gain);
+            gain.connect(master);
+            osc.start();
+          }
+
+          drone(98, "sine", 0.14);
+          drone(147, "sine", 0.09);
+          drone(196.5, "triangle", 0.025);
+
+          var length = Math.floor(ctx.sampleRate * 2);
+          var buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+          var data = buffer.getChannelData(0);
+          var b0 = 0;
+          var b1 = 0;
+          var b2 = 0;
+          for (var i = 0; i < length; i++) {
+            var white = Math.random() * 2 - 1;
+            b0 = 0.99765 * b0 + white * 0.099046;
+            b1 = 0.963 * b1 + white * 0.2965164;
+            b2 = 0.57 * b2 + white * 1.052691;
+            data[i] = (b0 + b1 + b2 + white * 0.1848) * 0.04;
+          }
+          var noise = ctx.createBufferSource();
+          noise.buffer = buffer;
+          noise.loop = true;
+          var filter = ctx.createBiquadFilter();
+          filter.type = "lowpass";
+          filter.frequency.value = 280;
+          filter.Q.value = 0.6;
+          var noiseGain = ctx.createGain();
+          noiseGain.gain.value = 0.18;
+          noise.connect(filter);
+          filter.connect(noiseGain);
+          noiseGain.connect(master);
+
+          var lfo = ctx.createOscillator();
+          lfo.type = "sine";
+          lfo.frequency.value = 0.06;
+          var lfoGain = ctx.createGain();
+          lfoGain.gain.value = 70;
+          lfo.connect(lfoGain);
+          lfoGain.connect(filter.frequency);
+
+          var now = ctx.currentTime;
+          master.gain.setValueAtTime(0, now);
+          master.gain.linearRampToValueAtTime(0.12, now + 1.6);
+
+          noise.start();
+          lfo.start();
+        }
+
+        function fadeAmbient() {
+          if (!audio.ctx || !audio.master) return;
+          var ctx = audio.ctx;
+          var now = ctx.currentTime;
+          var current = audio.master.gain.value;
+          audio.master.gain.cancelScheduledValues(now);
+          audio.master.gain.setValueAtTime(current, now);
+          audio.master.gain.linearRampToValueAtTime(0, now + 1.5);
+        }
+
+        function unlockAudio() {
+          var ctx = ensureAudio();
+          if (!ctx) return Promise.resolve();
+          return ctx.resume().then(function () {
+            startAmbient();
+          }).catch(function () {});
+        }
+
+        function armAudio() {
+          if (audio.armed) return;
+          audio.armed = true;
+          function go() {
+            document.removeEventListener("pointerdown", go);
+            document.removeEventListener("keydown", go);
+            document.removeEventListener("touchstart", go);
+            unlockAudio();
+          }
+          document.addEventListener("pointerdown", go);
+          document.addEventListener("keydown", go);
+          document.addEventListener("touchstart", go, { passive: true });
+          unlockAudio();
+        }
+
+        function showLine(text, className) {
+          lineEl.className = className || "";
+          lineEl.textContent = text;
+          lineEl.classList.add("show");
+        }
+
+        function hideLine() {
+          lineEl.classList.remove("show");
+        }
+
+        function waitForChoice() {
+          choiceEl.hidden = false;
+          choiceEl.className = "";
+          leftBtn.className = "side";
+          rightBtn.className = "side";
+          leftBtn.disabled = false;
+          rightBtn.disabled = false;
+
+          var picked = new Promise(function (resolve) {
+            var done = false;
+            function finish(side) {
+              if (done) return;
+              done = true;
+              leftBtn.removeEventListener("click", onLeft);
+              rightBtn.removeEventListener("click", onRight);
+              choiceEl.removeEventListener("keydown", onKey);
+              resolve(side);
+            }
+            function onLeft() {
+              finish("left");
+            }
+            function onRight() {
+              finish("right");
+            }
+            function onKey(event) {
+              if (event.key === "ArrowLeft" || event.key === "a" || event.key === "A") {
+                event.preventDefault();
+                finish("left");
+              }
+              if (event.key === "ArrowRight" || event.key === "d" || event.key === "D") {
+                event.preventDefault();
+                finish("right");
+              }
+            }
+            leftBtn.addEventListener("click", onLeft);
+            rightBtn.addEventListener("click", onRight);
+            choiceEl.addEventListener("keydown", onKey);
+          });
+
+          return paint().then(function () {
+            choiceEl.classList.add("show");
+            choiceEl.focus({ preventScroll: true });
+            return picked;
+          });
+        }
+
+        function acknowledge(side) {
+          var held = side === "left" ? leftBtn : rightBtn;
+          var gone = side === "left" ? rightBtn : leftBtn;
+          choiceEl.classList.add("picked");
+          held.classList.add("held");
+          gone.classList.add("gone");
+          leftBtn.disabled = true;
+          rightBtn.disabled = true;
+          return sleep(900).then(function () {
+            held.classList.add("exit");
+            return sleep(700);
+          }).then(function () {
+            choiceEl.hidden = true;
+            choiceEl.className = "";
+          });
+        }
+
+        function playHappen(type, side) {
+          var started = performance.now();
+          stageEl.innerHTML = "";
+          hideLine();
+
+          var step = Promise.resolve();
+          if (type === "echo") {
+            showLine(side === "left" ? "Left." : "Right.");
+            step = sleep(1600).then(hideLine);
+          } else if (type === "dot") {
+            var dot = document.createElement("div");
+            dot.className = "dot " + side;
+            stageEl.appendChild(dot);
+          } else if (type === "line") {
+            var rule = document.createElement("div");
+            rule.className = "rule";
+            stageEl.appendChild(rule);
+          } else if (type === "still") {
+            showLine("You are still here.");
+            step = sleep(1600).then(hideLine);
+          } else if (type === "tint") {
+            tintEl.className = side === "left" ? "cool" : "warm";
+          }
+
+          return step.then(function () {
+            return hold(started, 2400);
+          }).then(function () {
+            stageEl.innerHTML = "";
+          });
+        }
+
+        function finale() {
+          hideLine();
+          stageEl.innerHTML = "";
+          seamEl.classList.remove("on");
+          return sleep(1400).then(function () {
+            showLine("Did you choose this?", "question");
+            return sleep(8000);
+          }).then(function () {
+            againBtn.hidden = false;
+            return paint();
+          }).then(function () {
+            againBtn.classList.add("show");
+          });
+        }
+
+        var opened = false;
+
+        function run() {
+          againBtn.hidden = true;
+          againBtn.classList.remove("show");
+          hideLine();
+          stageEl.innerHTML = "";
+          tintEl.className = "";
+          seamEl.classList.remove("on");
+          choiceEl.hidden = true;
+
+          var gates = gatesFor(playIndex());
+          var waited = false;
+          var intro = opened ? Promise.resolve() : (opened = true, armAudio(), wait(5000).then(function () {
+            fadeAmbient();
+            return wait(400);
+          }));
+
+          return intro
+            .then(function () {
+              seamEl.classList.add("on");
+              return sleep(800);
+            })
+            .then(function () {
+              function next(i) {
+                if (i >= 5) return Promise.resolve();
+                var started = performance.now();
+                return waitForChoice().then(function (side) {
+                  if (i === 4 && performance.now() - started > 4000) waited = true;
+                  return acknowledge(side).then(function () {
+                    return playHappen(happenFor(i, gates[i]), side);
+                  });
+                }).then(function () {
+                  return sleep(420);
+                }).then(function () {
+                  return next(i + 1);
+                });
+              }
+              return next(0);
+            })
+            .then(function () {
+              if (!waited) return;
+              showLine("You waited.");
+              return sleep(1800).then(function () {
+                hideLine();
+                return sleep(700);
+              });
+            })
+            .then(finale);
+        }
+
+        againBtn.addEventListener("click", function () {
+          bumpPlays();
+          run();
+        });
+
+        run();
+      })();
+    </script>
+  </body>
+</html>

@@ -212,6 +212,12 @@
               "name": "Did you choose this?",
               "type": "website",
               "path": "sites/Roki-Jongha-Kim/The-questions-shouldnt-explain-the-piece-the-question-should-explain-the-viewer-project/did-you-choose-this/"
+            },
+            {
+              "id": "what-made-you-click",
+              "name": "What made you click?",
+              "type": "website",
+              "path": "sites/Roki-Jongha-Kim/The-questions-shouldnt-explain-the-piece-the-question-should-explain-the-viewer-project/what-made-you-click/"
             }
           ]
         }

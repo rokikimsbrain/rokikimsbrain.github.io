@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#c41c1c" />
+    <meta name="description" content="What made you click?" />
+    <title>What made you click?</title>
+    <style>
+      :root {
+        --red: #c41c1c;
+        --mark: #9a1212;
+        --fg: #fff;
+        --ease: cubic-bezier(0.22, 1, 0.36, 1);
+        --sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      html,
+      body,
+      #app {
+        height: 100%;
+        height: 100dvh;
+        touch-action: manipulation;
+      }
+
+      html,
+      body {
+        margin: 0;
+        background: var(--red);
+        color: var(--fg);
+        overflow: hidden;
+        cursor: default;
+      }
+
+      body {
+        font-family: var(--sans);
+        font-weight: 300;
+        font-style: normal;
+        -webkit-font-smoothing: antialiased;
+        user-select: none;
+      }
+
+      #app {
+        position: relative;
+      }
+
+      .mark {
+        position: absolute;
+        background: var(--mark);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 4.2s var(--ease);
+      }
+
+      .mark.a {
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+        left: 27.4%;
+        top: 38.6%;
+      }
+
+      .mark.b {
+        width: 11px;
+        height: 2px;
+        left: 63.1%;
+        top: 31.8%;
+      }
+
+      .mark.c {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        left: 48.2%;
+        top: 69.4%;
+      }
+
+      #app.marks .mark {
+        opacity: 0.32;
+      }
+
+      #app.quiet .mark {
+        opacity: 0;
+        transition-duration: 0.8s;
+      }
+
+      #line {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        z-index: 2;
+        margin: 0;
+        width: min(36rem, calc(100% - 3rem));
+        transform: translate(-50%, -50%);
+        text-align: center;
+        font-family: var(--sans);
+        font-size: 0.7rem;
+        font-weight: 300;
+        letter-spacing: 0.04em;
+        line-height: 1.4;
+        color: var(--fg);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 1.6s var(--ease);
+      }
+
+      #line.show {
+        opacity: 1;
+      }
+
+      #here {
+        position: absolute;
+        width: 3px;
+        height: 3px;
+        margin: -1.5px 0 0 -1.5px;
+        border-radius: 50%;
+        background: #fff;
+        opacity: 0;
+        pointer-events: none;
+        z-index: 3;
+        transform: scale(0.6);
+        transition: opacity 2.4s var(--ease), transform 2.4s var(--ease);
+      }
+
+      #here.show {
+        opacity: 1;
+        transform: scale(1);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .mark,
+        #line,
+        #here {
+          transition-duration: 0.2s;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <i class="mark a"></i>
+      <i class="mark b"></i>
+      <i class="mark c"></i>
+      <p id="line"></p>
+      <div id="here"></div>
+    </div>
+    <script>
+      (function () {
+        var app = document.getElementById("app");
+        var lineEl = document.getElementById("line");
+        var hereEl = document.getElementById("here");
+        var armed = false;
+        var captured = false;
+        var audio = { ctx: null, master: null, started: false, armed: false };
+
+        function wait(ms) {
+          return new Promise(function (resolve) {
+            setTimeout(resolve, ms);
+          });
+        }
+
+        function showLine(text) {
+          lineEl.textContent = text;
+          lineEl.classList.add("show");
+        }
+
+        function hideLine() {
+          lineEl.classList.remove("show");
+        }
+
+        function ensureAudio() {
+          var AC = window.AudioContext || window.webkitAudioContext;
+          if (!AC) return null;
+          if (!audio.ctx) audio.ctx = new AC();
+          return audio.ctx;
+        }
+
+        function startAmbient() {
+          var ctx = ensureAudio();
+          if (!ctx || audio.started) return;
+          audio.started = true;
+
+          var master = ctx.createGain();
+          master.gain.value = 0;
+          master.connect(ctx.destination);
+          audio.master = master;
+
+          function drone(freq, type, level) {
+            var osc = ctx.createOscillator();
+            osc.type = type;
+            osc.frequency.value = freq;
+            var gain = ctx.createGain();
+            gain.gain.value = level;
+            osc.connect(gain);
+            gain.connect(master);
+            osc.start();
+          }
+
+          drone(73.4, "sine", 0.16);
+          drone(110, "sine", 0.08);
+          drone(146.8, "triangle", 0.02);
+
+          var length = Math.floor(ctx.sampleRate * 2);
+          var buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+          var data = buffer.getChannelData(0);
+          var b0 = 0;
+          var b1 = 0;
+          var b2 = 0;
+          for (var i = 0; i < length; i++) {
+            var white = Math.random() * 2 - 1;
+            b0 = 0.99765 * b0 + white * 0.099046;
+            b1 = 0.963 * b1 + white * 0.2965164;
+            b2 = 0.57 * b2 + white * 1.052691;
+            data[i] = (b0 + b1 + b2 + white * 0.1848) * 0.04;
+          }
+          var noise = ctx.createBufferSource();
+          noise.buffer = buffer;
+          noise.loop = true;
+          var filter = ctx.createBiquadFilter();
+          filter.type = "lowpass";
+          filter.frequency.value = 180;
+          filter.Q.value = 0.7;
+          var noiseGain = ctx.createGain();
+          noiseGain.gain.value = 0.16;
+          noise.connect(filter);
+          filter.connect(noiseGain);
+          noiseGain.connect(master);
+
+          var lfo = ctx.createOscillator();
+          lfo.type = "sine";
+          lfo.frequency.value = 0.05;
+          var lfoGain = ctx.createGain();
+          lfoGain.gain.value = 50;
+          lfo.connect(lfoGain);
+          lfoGain.connect(filter.frequency);
+
+          var now = ctx.currentTime;
+          master.gain.setValueAtTime(0, now);
+          master.gain.linearRampToValueAtTime(0.11, now + 2.4);
+
+          noise.start();
+          lfo.start();
+        }
+
+        function unlockAudio() {
+          var ctx = ensureAudio();
+          if (!ctx) return Promise.resolve();
+          return ctx.resume().then(function () {
+            startAmbient();
+          }).catch(function () {});
+        }
+
+        function armAudio() {
+          if (audio.armed) return;
+          audio.armed = true;
+          function go() {
+            document.removeEventListener("pointerdown", go);
+            document.removeEventListener("keydown", go);
+            document.removeEventListener("touchstart", go);
+            unlockAudio();
+          }
+          document.addEventListener("pointerdown", go);
+          document.addEventListener("keydown", go);
+          document.addEventListener("touchstart", go, { passive: true });
+          unlockAudio();
+        }
+
+        function remember(x, y) {
+          var point = { x: x, y: y };
+          try {
+            localStorage.setItem("lastrow.click", JSON.stringify(point));
+          } catch (e) {}
+          return point;
+        }
+
+        function continueWork(point) {
+          app.classList.add("quiet");
+          app.classList.remove("marks");
+
+          return wait(500)
+            .then(function () {
+              showLine("Why there?");
+              return wait(3600);
+            })
+            .then(function () {
+              hideLine();
+              return wait(2800);
+            })
+            .then(function () {
+              showLine("You clicked here.");
+              return wait(3200);
+            })
+            .then(function () {
+              hideLine();
+              return wait(1200);
+            })
+            .then(function () {
+              hereEl.style.left = point.x * 100 + "%";
+              hereEl.style.top = point.y * 100 + "%";
+              hereEl.classList.add("show");
+            });
+        }
+
+        function onPointer(event) {
+          if (!armed || captured) return;
+          captured = true;
+          var x = event.clientX / window.innerWidth;
+          var y = event.clientY / window.innerHeight;
+          continueWork(remember(x, y));
+        }
+
+        armAudio();
+
+        wait(2200).then(function () {
+          app.classList.add("marks");
+          return wait(800);
+        }).then(function () {
+          armed = true;
+        });
+
+        window.addEventListener("pointerdown", onPointer);
+      })();
+    </script>
+  </body>
+</html>

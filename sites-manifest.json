@@ -242,6 +242,12 @@
               "name": "Can we do this together?",
               "type": "website",
               "path": "sites/Roki-Jongha-Kim/The-questions-shouldnt-explain-the-piece-the-question-should-explain-the-viewer-project/can-we-do-this-together/"
+            },
+            {
+              "id": "the-200",
+              "name": "The 200",
+              "type": "website",
+              "path": "sites/Roki-Jongha-Kim/The-questions-shouldnt-explain-the-piece-the-question-should-explain-the-viewer-project/the-200/"
             }
           ]
         }

@@ -257,6 +257,13 @@
           "type": "folder",
           "path": "sites/Roki-Jongha-Kim/Iphone5s/",
           "children": []
+        },
+        {
+          "id": "creative-projects-mini",
+          "name": "Creative Projects mini",
+          "type": "folder",
+          "path": "sites/Roki-Jongha-Kim/Creative-Projects-mini/",
+          "children": []
         }
       ]
     }

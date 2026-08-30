@@ -263,7 +263,14 @@
           "name": "Creative Projects mini",
           "type": "folder",
           "path": "sites/Roki-Jongha-Kim/Creative-Projects-mini/",
-          "children": []
+          "children": [
+            {
+              "id": "laundry-in-the-rain",
+              "name": "Laundry In the Rain",
+              "type": "website",
+              "path": "sites/Roki-Jongha-Kim/Creative-Projects-mini/laundry-in-the-rain/"
+            }
+          ]
         }
       ]
     }

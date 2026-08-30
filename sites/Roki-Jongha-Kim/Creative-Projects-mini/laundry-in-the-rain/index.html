@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Laundry</title>
+    <script type="module" crossorigin src="./assets/index-CCtXT9d2.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-DLNc9b7U.css">
+  </head>
+  <body>
+    <p class="hint" id="hint">Drag the clothes into the machine</p>
+
+    <div class="scene">
+      <div class="washer-stage" id="washer-stage">
+        <img
+          class="washer"
+          src="./assets/washer.png"
+          alt="Washing machine"
+          draggable="false"
+        />
+        <button class="panel-start" id="panel-start" type="button" aria-label="Start wash" disabled></button>
+        <div class="door" id="door" role="img" aria-label="Washer door">
+          <canvas id="drum-canvas"></canvas>
+          <canvas id="face-canvas"></canvas>
+          <div class="glass"></div>
+        </div>
+      </div>
+
+      <div class="pile-stage" id="pile">
+        <img
+          class="hamper"
+          src="./assets/hamper.png"
+          alt="Laundry hamper"
+          draggable="false"
+        />
+      </div>
+    </div>
+
+    <div class="dock">
+      <label class="song">
+        <input id="song-input" type="file" accept="audio/*" />
+        <span id="song-label">Choose a song</span>
+      </label>
+    </div>
+
+    <video id="camera" playsinline autoplay muted></video>
+    <audio id="song" loop></audio>
+  </body>
+</html>

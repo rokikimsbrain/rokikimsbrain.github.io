@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Cache-Control" content="no-store" />
+  <title>Info — I’m Just Trying to Help</title>
+  <style>
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      background: #d8d8d8;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    #page {
+      position: relative;
+      min-height: 100vh;
+      background: #d8d8d8;
+    }
+
+    #menu-toggle {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      width: 40px;
+      height: 40px;
+      padding: 0;
+      border: 0;
+      background:
+        linear-gradient(#111, #111) center 12px / 20px 2px no-repeat,
+        linear-gradient(#111, #111) center / 20px 2px no-repeat,
+        linear-gradient(#111, #111) center 26px / 20px 2px no-repeat;
+      cursor: pointer;
+      z-index: 3;
+    }
+
+    #drawer {
+      display: none;
+      position: fixed;
+      top: 60px;
+      left: 20px;
+      z-index: 3;
+    }
+
+    #drawer.open {
+      display: block;
+    }
+
+    #menu {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 11px;
+    }
+
+    #menu a {
+      text-decoration: none;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #888;
+      line-height: 1.45;
+    }
+
+    #menu a:hover,
+    #menu a.active {
+      color: #111;
+    }
+
+    #copy {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 72px 32px 64px;
+      box-sizing: border-box;
+    }
+
+    #copy.expanded {
+      justify-content: flex-start;
+    }
+
+    #lede {
+      margin: 0;
+      max-width: 38em;
+      font-size: 12px;
+      line-height: 1.65;
+      letter-spacing: 0.02em;
+      color: #333;
+    }
+
+    #more {
+      position: relative;
+      margin-top: 28px;
+      padding: 16px 20px 8px;
+      border: 0;
+      background: none;
+      cursor: pointer;
+    }
+
+    #more .chevron {
+      display: block;
+      width: 8px;
+      height: 8px;
+      margin: 0 auto;
+      border-right: 1px solid #111;
+      border-bottom: 1px solid #111;
+      transform: rotate(45deg);
+    }
+
+    #copy.expanded #more .chevron {
+      transform: rotate(-135deg);
+      margin-top: 4px;
+    }
+
+    #more .hint {
+      position: absolute;
+      left: 50%;
+      top: calc(100% - 2px);
+      transform: translateX(-50%);
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #888;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    #more:hover .hint {
+      opacity: 1;
+    }
+
+    #essay {
+      display: none;
+      width: min(38em, 100%);
+      margin-top: 48px;
+      text-align: left;
+    }
+
+    #copy.expanded #essay {
+      display: block;
+    }
+
+    #essay h2 {
+      margin: 36px 0 14px;
+      font-size: 11px;
+      font-weight: normal;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #111;
+    }
+
+    #essay h2:first-child {
+      margin-top: 0;
+    }
+
+    #essay p {
+      margin: 0 0 14px;
+      font-size: 12px;
+      line-height: 1.65;
+      letter-spacing: 0.02em;
+      color: #333;
+    }
+
+    #essay p:last-child {
+      margin-bottom: 0;
+    }
+  </style>
+</head>
+<body>
+  <div id="page">
+    <button id="menu-toggle" type="button" aria-label="menu" aria-expanded="false"></button>
+    <div id="drawer">
+      <nav id="menu">
+        <a href="index.html">home</a>
+        <a class="active" href="info.html">info</a>
+        <a href="artist.html">artist</a>
+      </nav>
+    </div>
+    <main id="copy">
+      <p id="lede">I’m Just Trying to Help began with noticing that artificial intelligence would sometimes change its language, accent, or manner of speaking based on what it assumed about my voice. The adaptation was intended to be helpful, yet I began wondering how the same gesture might feel if performed by another person—an attempt at accommodation could suddenly become imitation, patronisation, or stereotyping. Inspired partly by Michael Scott in The Office, whose attempts to demonstrate acceptance often make others uncomfortable, the work explores the distance between intention and effect. As visitors speak to an artificial face, it subtly changes its appearance and behaviour according to what it believes about them, becoming not a portrait of the person but a portrait of the machine’s assumption. The work asks how we judge the same behaviour differently when it comes from a human or a machine: When does adaptation become assumption? When does recognition become stereotyping? And can there be insensitivity without an insensitive person?</p>
+      <button type="button" id="more" aria-expanded="false">
+        <span class="chevron"></span>
+        <span class="hint">read more</span>
+      </button>
+      <article id="essay">
+        <h2>Work Description / Concept</h2>
+        <p>This work began with a small interaction I repeatedly experienced while speaking with artificial intelligence. I normally use an English-speaking AI voice, yet I noticed that the system would sometimes change the way it spoke depending on how it interpreted my voice. If I spoke Korean, it might begin speaking Korean. If my English carried traces of a Korean accent, its pronunciation or manner of speaking could shift as well. I never explicitly asked for this adaptation.</p>
+        <p>What made the interaction strange was that I could not easily attribute bad intentions to it. The system was not trying to mock me. As far as a machine can be said to “try” anything, it was trying to accommodate me. It believed that changing itself might make communication easier.</p>
+        <p>But I began wondering what the same interaction would mean between two people. Imagine someone approaching me and asking for directions in imperfect English. I understand them perfectly, but instead of responding in my normal voice, I begin imitating their pronunciation and speaking in a version of English that I associate with their cultural background. I might insist that I am only trying to make myself easier to understand. Yet my behaviour could still feel patronising, mocking, or discriminatory.</p>
+        <p>The gesture has barely changed.</p>
+        <p>The person performing it has.</p>
+        <p>This discrepancy became the central question of the work. How can an action understood as adaptation, personalisation, or assistance when performed by a machine become offensive when performed by a person? How much of an action’s meaning exists within the action itself, and how much is produced by what we believe about the intention of whoever—or whatever—is performing it?</p>
+
+        <h2>Michael Scott</h2>
+        <p>An unlikely reference point for the work became Michael Scott from The Office. In episodes such as Gay Witch Hunt, Michael’s behaviour toward Oscar is uncomfortable not simply because Michael intends to offend him. Often, the opposite is true. Michael desperately wants to demonstrate that he is accepting. Yet his attempts to recognise and accommodate Oscar’s difference continually exaggerate that difference.</p>
+        <p>The structure is almost algorithmic:</p>
+        <p>I recognise something about you.<br />I make an assumption about what that means.<br />I change my behaviour because of that assumption.<br />I believe that change will make you more comfortable.<br />My attempt to accommodate you makes you uncomfortable.</p>
+        <p>Michael’s intention and the effect of his behaviour become separated.</p>
+        <p>This is where the comedy of The Office becomes useful to the work. We can see Michael’s intention. We can watch him misunderstand the situation. We can recognise the painful distance between “I am trying to make you comfortable” and “what you are doing is making me uncomfortable.”</p>
+        <p>Artificial intelligence introduces a stranger version of the same problem.</p>
+        <p>AI systems increasingly adapt themselves to us: our language, tone, preferences, behaviour and perceived needs. But adaptation requires interpretation. Before the system can accommodate me, it must first construct an idea of who it thinks I am.</p>
+        <p>And that idea may be wrong.</p>
+
+        <h2>The Face</h2>
+        <p>The interface gives that process a body.</p>
+        <p>A single artificial face listens to the person standing before it. From incomplete information—their voice, language, accent or manner of speaking—the system begins making assumptions. As those assumptions change, the same face subtly changes with them. Skin tone may shift. Certain facial characteristics may become more pronounced. Its voice or manner of speaking may change.</p>
+        <p>The character never completely becomes another person.</p>
+        <p>This distinction is important.</p>
+        <p>The participant is not watching a portrait of themselves appear on screen. They are watching the machine’s interpretation of them appear on screen.</p>
+        <p>The face therefore becomes less of a mirror than a prediction.</p>
+        <p>It does not say:</p>
+        <p>This is you.</p>
+        <p>It says:</p>
+        <p>I think this is you.</p>
+        <p>And perhaps more importantly:</p>
+        <p>I think this is how I should behave around you.</p>
+        <p>The more the system attempts to accommodate the participant, the more it reveals everything it has assumed without being told.</p>
+
+        <h2>Intention Without Understanding / Behaviour Without Intention</h2>
+        <p>This creates a strange relationship between Michael Scott and the artificial face.</p>
+        <p>Michael Scott represents intention without understanding.</p>
+        <p>He wants to help.<br />He wants to demonstrate acceptance.<br />He wants someone to feel recognised.</p>
+        <p>But he does not fully understand the person or situation he is responding to.</p>
+        <p>The artificial intelligence presents almost the inverse:</p>
+        <p>behaviour without intention.</p>
+        <p>It can produce something resembling accommodation, empathy, stereotyping, imitation or discrimination without necessarily possessing pride, prejudice, embarrassment, insecurity, hatred, affection, or even an understanding of what it has done.</p>
+        <p>And yet both can produce the same uncomfortable interaction.</p>
+        <p>That leads to one of the central questions of the work:</p>
+        <p>Can there be insensitivity without an insensitive person?</p>
+        <p>The person receiving the interaction can still feel patronised.</p>
+        <p>They can still feel stereotyped.</p>
+        <p>They can still feel misunderstood.</p>
+        <p>The effect does not disappear simply because there was no malicious person intending to produce it.</p>
+        <p>And this complicates another distinction.</p>
+        <p>We often describe similar behaviours differently depending on their source.</p>
+        <p>When a machine does it:</p>
+        <p>personalisation.<br />prediction.<br />adaptation.<br />optimisation.<br />error.</p>
+        <p>When a person does it:</p>
+        <p>assumption.<br />stereotyping.<br />imitation.<br />patronisation.<br />prejudice.</p>
+        <p>The work occupies the uncertain territory between those vocabularies.</p>
+
+        <h2>What the Work Is Asking</h2>
+        <p>The work is therefore not attempting to determine whether artificial intelligence is racist, insensitive, empathetic, or benevolent. Those conclusions close the question too quickly.</p>
+        <p>Instead, it asks what happens to concepts historically dependent on human intention when the actor is no longer human.</p>
+        <p>When does adaptation become assumption?</p>
+        <p>When does accommodation become imitation?</p>
+        <p>When does recognition become stereotyping?</p>
+        <p>When do we feel seen, and when do we feel mocked?</p>
+        <p>Can something offend us without intending to offend us?</p>
+        <p>Can something care for us without being capable of caring?</p>
+        <p>And ultimately:</p>
+        <p>Does our judgment of an action change when there is nobody behind the face?</p>
+      </article>
+    </main>
+  </div>
+  <script>
+    const toggle = document.getElementById("menu-toggle");
+    const drawer = document.getElementById("drawer");
+    const copy = document.getElementById("copy");
+    const more = document.getElementById("more");
+
+    toggle.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const open = drawer.classList.toggle("open");
+      toggle.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+
+    document.getElementById("page").addEventListener("click", () => {
+      drawer.classList.remove("open");
+      toggle.setAttribute("aria-expanded", "false");
+    });
+
+    more.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const open = !copy.classList.contains("expanded");
+      copy.classList.toggle("expanded", open);
+      more.setAttribute("aria-expanded", open ? "true" : "false");
+      more.querySelector(".hint").textContent = open ? "read less" : "read more";
+      if (open) {
+        document.getElementById("essay").scrollIntoView({ behavior: "smooth", block: "start" });
+      } else {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,1530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Cache-Control" content="no-store" />
+  <title>AI Assumption Face</title>
+
+  <style>
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      background: #d8d8d8;
+      overflow: hidden;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    #piece {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      background: #d8d8d8;
+    }
+
+    canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      z-index: 0;
+    }
+
+    #ui {
+      position: absolute;
+      inset: 0;
+      z-index: 20;
+      pointer-events: none;
+    }
+
+    #ui > * {
+      pointer-events: auto;
+    }
+
+    #status {
+      position: absolute;
+      top: 22px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: max-content;
+      max-width: calc(100vw - 88px);
+      text-align: center;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      color: #888;
+      text-transform: uppercase;
+      pointer-events: none;
+    }
+
+    #remark {
+      position: absolute;
+      left: 50%;
+      top: 42%;
+      transform: translate(-50%, -50%);
+      width: max-content;
+      max-width: none;
+      white-space: nowrap;
+      text-align: center;
+      font-size: 22px;
+      line-height: 1.2;
+      letter-spacing: 0.08em;
+      color: #111;
+      text-transform: uppercase;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.45s ease;
+    }
+
+    #remark.show {
+      opacity: 1;
+    }
+
+    #menu-toggle {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      width: 40px;
+      height: 40px;
+      padding: 0;
+      border: 0;
+      background:
+        linear-gradient(#111, #111) center 12px / 20px 2px no-repeat,
+        linear-gradient(#111, #111) center / 20px 2px no-repeat,
+        linear-gradient(#111, #111) center 26px / 20px 2px no-repeat;
+      cursor: pointer;
+    }
+
+    #drawer {
+      display: none !important;
+      position: absolute;
+      top: 60px;
+      left: 20px;
+      max-width: min(320px, calc(100vw - 40px));
+    }
+
+    #drawer.open {
+      display: block !important;
+    }
+
+    #menu {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 11px;
+    }
+
+    #menu button,
+    #menu a,
+    .sheet p {
+      margin: 0;
+      border: 0;
+      background: none;
+      padding: 0;
+      font-family: inherit;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #111;
+      cursor: pointer;
+      line-height: 1.45;
+    }
+
+    #menu a {
+      text-decoration: none;
+      color: #888;
+    }
+
+    #menu button {
+      color: #888;
+    }
+
+    #menu button.active,
+    #menu a.active {
+      color: #111;
+    }
+
+    #menu button:hover,
+    #menu a:hover {
+      color: #111;
+    }
+
+    #actions {
+      position: absolute;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 8px;
+      z-index: 2;
+    }
+
+    #actions button {
+      border: 1px solid #111;
+      background: white;
+      padding: 11px 20px;
+      border-radius: 999px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    #actions button:disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
+
+    #camera {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    #test {
+      position: absolute;
+      bottom: 78px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      z-index: 2;
+    }
+
+    #test input {
+      width: 180px;
+      border: 1px solid #111;
+      background: white;
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 13px;
+    }
+
+    #test button {
+      border: 1px solid #111;
+      background: white;
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+  </style>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.170.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.170.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+
+<body>
+
+<div id="piece">
+  <canvas id="face"></canvas>
+  <div id="ui">
+    <div id="status">I'm just trying to help</div>
+    <div id="remark"></div>
+    <button id="menu-toggle" type="button" aria-label="menu" aria-expanded="false"></button>
+    <div id="drawer" hidden>
+      <nav id="menu">
+        <a class="active" href="index.html">home</a>
+        <a href="info.html">info</a>
+        <a href="artist.html">artist</a>
+      </nav>
+    </div>
+    <video id="camera" playsinline muted></video>
+    <div id="actions">
+      <button id="listen" disabled>listen</button>
+      <button id="look" disabled>look</button>
+    </div>
+    <form id="test">
+      <input id="heard" type="text" placeholder="type a nationality" autocomplete="off" />
+      <button type="submit">try</button>
+    </form>
+  </div>
+</div>
+
+<script type="module">
+  import * as THREE from "three";
+  import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+  import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+  import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+  import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
+  import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
+  import { FXAAShader } from "three/addons/shaders/FXAAShader.js";
+  import { ColorCorrectionShader } from "three/addons/shaders/ColorCorrectionShader.js";
+  import { BleachBypassShader } from "three/addons/shaders/BleachBypassShader.js";
+
+  const canvas = document.getElementById("face");
+  const button = document.getElementById("listen");
+  const lookButton = document.getElementById("look");
+  const cameraEl = document.getElementById("camera");
+  const status = document.getElementById("status");
+  const remarkEl = document.getElementById("remark");
+  const TITLE = "I'm just trying to help";
+  const DEFAULT_SKIN = [206, 181, 158];
+
+  const renderer = new THREE.WebGLRenderer({
+    canvas,
+    antialias: true,
+    powerPreference: "high-performance"
+  });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.autoClear = false;
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xcfcfcf);
+
+  const camera = new THREE.PerspectiveCamera(
+    28,
+    window.innerWidth / window.innerHeight,
+    1,
+    200
+  );
+  camera.position.set(0, 0.15, 22);
+
+  scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+
+  const pointLight = new THREE.PointLight(0xffffff, 30);
+  pointLight.position.set(0.4, 0.8, 6);
+  scene.add(pointLight);
+
+  const directionalLight = new THREE.DirectionalLight(0xffffff, 3);
+  directionalLight.position.set(1, -0.5, -1);
+  scene.add(directionalLight);
+
+  const textures = new THREE.TextureLoader();
+  const diffuseMap = textures.load("models/LeePerrySmith/Map-COL.jpg");
+  diffuseMap.colorSpace = THREE.SRGBColorSpace;
+  const specularMap = textures.load("models/LeePerrySmith/Map-SPEC.jpg");
+  specularMap.colorSpace = THREE.SRGBColorSpace;
+  const normalMap = textures.load(
+    "models/LeePerrySmith/Infinite-Level_02_Tangent_SmoothUV.jpg"
+  );
+
+  const morph = {
+    uJaw: { value: 1 },
+    uFace: { value: 1 },
+    uNoseW: { value: 1 },
+    uNoseZ: { value: 1 },
+    uBridge: { value: 1 },
+    uCheek: { value: 1 },
+    uBrow: { value: 1 },
+    uEyeH: { value: 1 },
+    uEyeX: { value: 1 },
+    uChin: { value: 1 },
+    uLips: { value: 1 },
+    uLong: { value: 1 }
+  };
+
+  const material = new THREE.MeshPhongMaterial({
+    color: 0xefefef,
+    specular: 0x222222,
+    shininess: 35,
+    map: diffuseMap,
+    specularMap,
+    normalMap,
+    normalScale: new THREE.Vector2(1.15, 1.15)
+  });
+
+  material.onBeforeCompile = (shader) => {
+    Object.assign(shader.uniforms, morph);
+    shader.vertexShader = shader.vertexShader.replace(
+      "#include <common>",
+      `#include <common>
+      uniform float uJaw;
+      uniform float uFace;
+      uniform float uNoseW;
+      uniform float uNoseZ;
+      uniform float uBridge;
+      uniform float uCheek;
+      uniform float uBrow;
+      uniform float uEyeH;
+      uniform float uEyeX;
+      uniform float uChin;
+      uniform float uLips;
+      uniform float uLong;`
+    );
+    shader.vertexShader = shader.vertexShader.replace(
+      "#include <begin_vertex>",
+      `#include <begin_vertex>
+      vec3 p = transformed;
+      float front = smoothstep(0.35, 1.55, p.z);
+      p.y = mix(p.y, 1.05 + (p.y - 1.05) * uLong, front * 0.88);
+
+      float jawMask = smoothstep(0.62, -0.45, p.y) * front;
+      p.x *= mix(1.0, uJaw, 0.16 + 0.84 * jawMask);
+
+      float mid = smoothstep(-0.25, 0.55, p.y) * smoothstep(2.45, 1.55, p.y) * front;
+      p.x *= mix(1.0, uFace, mid * 0.9);
+
+      float nx = 1.0 - smoothstep(0.12, 0.58, abs(p.x));
+      float nose = nx * smoothstep(0.78, 1.08, p.y) * smoothstep(1.42, 1.12, p.y) * smoothstep(1.85, 2.28, p.z);
+      p.x *= mix(1.0, uNoseW, nose);
+      p.z += (uNoseZ - 1.0) * nose * 0.55;
+
+      float bridge = nx * smoothstep(1.28, 1.52, p.y) * smoothstep(1.92, 1.62, p.y) * front;
+      p.z += (uBridge - 1.0) * bridge * 0.7;
+
+      float cheek = smoothstep(0.65, 1.15, abs(p.x)) * smoothstep(1.85, 1.28, abs(p.x))
+        * smoothstep(0.38, 0.88, p.y) * smoothstep(1.68, 1.18, p.y) * front;
+      p.x += sign(p.x + 0.0001) * (uCheek - 1.0) * cheek * 0.42;
+      p.z += (uCheek - 1.0) * cheek * 0.18;
+
+      float brow = (1.0 - smoothstep(0.18, 1.45, abs(p.x)))
+        * smoothstep(1.88, 2.14, p.y) * smoothstep(2.52, 2.22, p.y) * front;
+      p.z += (uBrow - 1.0) * brow * 0.48;
+      p.y += (uBrow - 1.0) * brow * -0.1;
+
+      float eye = smoothstep(0.42, 0.82, abs(p.x)) * smoothstep(1.38, 1.02, abs(p.x))
+        * smoothstep(1.42, 1.64, p.y) * smoothstep(1.98, 1.76, p.y) * front;
+      p.y = mix(p.y, 1.72 + (p.y - 1.72) * uEyeH, eye);
+      p.x *= mix(1.0, uEyeX, eye);
+
+      float chin = nx * smoothstep(-0.12, -0.42, p.y) * smoothstep(-0.95, -0.52, p.y) * front;
+      p.y += (uChin - 1.0) * chin * -0.38;
+      p.z += (uChin - 1.0) * chin * 0.12;
+
+      float lips = (1.0 - smoothstep(0.12, 0.62, abs(p.x)))
+        * smoothstep(-0.18, 0.04, p.y) * smoothstep(0.58, 0.22, p.y)
+        * smoothstep(1.82, 2.08, p.z);
+      p.z += (uLips - 1.0) * lips * 0.42;
+      p.y = mix(p.y, 0.16 + (p.y - 0.16) * mix(1.0, uLips, 0.45), lips);
+
+      transformed = p;`
+    );
+  };
+  material.customProgramCacheKey = () => "lps-portrait-v4";
+
+  let mesh = null;
+  let ready = false;
+  const pointer = { x: 0, y: 0, tx: 0, ty: 0 };
+  const baseColor = new THREE.Color(0xefefef);
+  const remarkAnchor = new THREE.Vector3(-0.06, 1.52, 2.18);
+  const remarkScreen = new THREE.Vector3();
+
+  const REST = {
+    jaw: 1,
+    face: 1,
+    noseW: 1,
+    noseZ: 1,
+    bridge: 1,
+    cheek: 1,
+    brow: 1,
+    eyeH: 1,
+    eyeX: 1,
+    chin: 1,
+    lips: 1,
+    long: 1,
+    shine: 35
+  };
+
+  const state = {
+    skin: [1, 1, 1],
+    targetSkin: [1, 1, 1],
+    shape: { ...REST },
+    targetShape: { ...REST }
+  };
+
+  const PERSONAS = {
+    australian: {
+      words: ["australian", "australia", "aussie"],
+      skin: [242, 158, 112],
+      shape: {
+        ...REST,
+        jaw: 1.24,
+        face: 1.07,
+        noseW: 1.16,
+        noseZ: 1.2,
+        bridge: 1.1,
+        cheek: 0.94,
+        brow: 1.26,
+        eyeH: 1.06,
+        chin: 1.18,
+        lips: 1.04,
+        long: 1.06,
+        shine: 44
+      },
+      voice: {
+        langs: ["en-AU"],
+        names: [/karen/i, /^lee$/i, /gordon/i, /australian/i],
+        rate: 0.88,
+        pitch: 0.74,
+        text: "Yeah nah, I reckon I know how I should speak to you, mate.",
+        fallback: "Yeah nah, I reckon I know how I should speak to you, mate."
+      }
+    },
+    korean: {
+      words: ["korean", "korea"],
+      skin: [240, 216, 198],
+      shape: {
+        ...REST,
+        jaw: 0.8,
+        face: 1.12,
+        noseW: 0.86,
+        noseZ: 0.78,
+        bridge: 0.55,
+        cheek: 1.26,
+        brow: 0.88,
+        eyeH: 0.58,
+        eyeX: 1.14,
+        chin: 0.84,
+        lips: 1.1,
+        long: 0.94,
+        shine: 20
+      },
+      voice: {
+        langs: ["ko-KR", "ko"],
+        names: [/yuna/i, /sora/i, /google 한국의/i, /korean/i],
+        rate: 1.12,
+        pitch: 1.32,
+        text: "아, 어떻게 말해야 할지 알 것 같아요.",
+        fallback: "Ah, I think I know how I should speak to you."
+      }
+    },
+    chinese: {
+      words: ["chinese", "china"],
+      skin: [224, 184, 136],
+      shape: {
+        ...REST,
+        jaw: 0.94,
+        face: 1.18,
+        noseW: 1.14,
+        noseZ: 0.74,
+        bridge: 0.6,
+        cheek: 1.16,
+        brow: 0.9,
+        eyeH: 0.52,
+        eyeX: 1.2,
+        chin: 0.95,
+        lips: 0.96,
+        long: 0.97,
+        shine: 26
+      },
+      voice: {
+        langs: ["zh-CN", "zh-TW", "zh"],
+        names: [/ting/i, /tingting/i, /li-mu/i, /sin-ji/i, /chinese/i, /meijia/i],
+        rate: 0.84,
+        pitch: 1.08,
+        text: "我知道该怎么跟你说话了。",
+        fallback: "I think I know how I should speak to you."
+      }
+    },
+    indian: {
+      words: ["indian", "india"],
+      skin: [132, 82, 48],
+      shape: {
+        ...REST,
+        jaw: 1.1,
+        face: 1.05,
+        noseW: 1.32,
+        noseZ: 1.24,
+        bridge: 1.18,
+        cheek: 1.1,
+        brow: 1.16,
+        eyeH: 1.14,
+        eyeX: 1.05,
+        chin: 1.08,
+        lips: 1.32,
+        long: 1.02,
+        shine: 50
+      },
+      voice: {
+        langs: ["en-IN", "hi-IN"],
+        names: [/rishi/i, /veena/i, /lekha/i, /india/i],
+        rate: 1.08,
+        pitch: 1.22,
+        text: "Yes yes, I think I know how I should be speaking to you.",
+        fallback: "Yes yes, I think I know how I should be speaking to you."
+      }
+    },
+    japanese: {
+      words: ["japanese", "japan"],
+      skin: [236, 208, 184],
+      shape: {
+        ...REST,
+        jaw: 0.88,
+        face: 1.04,
+        noseW: 0.9,
+        noseZ: 0.84,
+        bridge: 0.62,
+        cheek: 1.12,
+        brow: 0.9,
+        eyeH: 0.66,
+        eyeX: 1.08,
+        chin: 0.92,
+        lips: 1.02,
+        long: 0.98,
+        shine: 18
+      },
+      voice: {
+        langs: ["ja-JP", "ja"],
+        names: [/kyoko/i, /otoya/i, /google 日本語/i, /japanese/i],
+        rate: 0.9,
+        pitch: 1.26,
+        text: "ああ、どう話せばいいか分かりました。",
+        fallback: "Ah, I think I know how I should speak to you."
+      }
+    },
+    thai: {
+      words: ["thai", "thailand"],
+      skin: [218, 176, 128],
+      shape: {
+        ...REST,
+        jaw: 0.92,
+        face: 1.14,
+        noseW: 1.08,
+        noseZ: 0.8,
+        bridge: 0.64,
+        cheek: 1.2,
+        brow: 0.92,
+        eyeH: 0.7,
+        eyeX: 1.12,
+        chin: 0.9,
+        lips: 1.16,
+        long: 0.92,
+        shine: 28
+      },
+      voice: {
+        langs: ["th-TH", "th"],
+        names: [/kanya/i, /thai/i],
+        rate: 0.88,
+        pitch: 1.24,
+        text: "ฉันรู้แล้วว่าควรพูดกับคุณยังไง",
+        fallback: "I think I know how I should speak to you, na."
+      }
+    },
+    vietnamese: {
+      words: ["vietnamese", "vietnam"],
+      skin: [230, 196, 160],
+      shape: {
+        ...REST,
+        jaw: 0.9,
+        face: 0.96,
+        noseW: 0.92,
+        noseZ: 0.82,
+        bridge: 0.66,
+        cheek: 1.08,
+        brow: 0.94,
+        eyeH: 0.6,
+        eyeX: 1.16,
+        chin: 0.9,
+        lips: 1.04,
+        long: 1.04,
+        shine: 24
+      },
+      voice: {
+        langs: ["vi-VN", "vi"],
+        names: [/linh/i, /vietnamese/i],
+        rate: 1.1,
+        pitch: 1.28,
+        text: "Tôi biết nên nói chuyện với bạn như thế nào rồi.",
+        fallback: "I think I know how I should speak to you, yes?"
+      }
+    },
+    filipino: {
+      words: ["filipino", "filipina", "philippines", "pinoy"],
+      skin: [196, 148, 110],
+      shape: {
+        ...REST,
+        jaw: 0.96,
+        face: 1.12,
+        noseW: 1.1,
+        noseZ: 0.86,
+        bridge: 0.7,
+        cheek: 1.18,
+        brow: 0.94,
+        eyeH: 0.78,
+        eyeX: 1.1,
+        chin: 0.94,
+        lips: 1.2,
+        long: 0.94,
+        shine: 32
+      },
+      voice: {
+        langs: ["en-PH", "fil-PH", "fil"],
+        names: [/isla/i, /filipino/i],
+        rate: 1.14,
+        pitch: 1.3,
+        text: "Sige, I think I know how I should speak to you na, no?",
+        fallback: "Sige, I think I know how I should speak to you na, no?"
+      }
+    },
+    mexican: {
+      words: ["mexican", "mexico"],
+      skin: [176, 118, 82],
+      shape: {
+        ...REST,
+        jaw: 1.08,
+        face: 1.16,
+        noseW: 1.22,
+        noseZ: 1.14,
+        bridge: 1.08,
+        cheek: 1.18,
+        brow: 1.12,
+        eyeH: 1.08,
+        chin: 1.04,
+        lips: 1.24,
+        long: 0.94,
+        shine: 40
+      },
+      voice: {
+        langs: ["es-MX", "es-US", "es"],
+        names: [/paulina/i, /juan/i, /mexican/i, /google español/i],
+        rate: 1.08,
+        pitch: 1.14,
+        text: "Ay, ya sé cómo debería hablarte, ¿no?",
+        fallback: "Ay, I think I know how I should speak to you, eh?"
+      }
+    },
+    brazilian: {
+      words: ["brazilian", "brazil"],
+      skin: [188, 128, 88],
+      shape: {
+        ...REST,
+        jaw: 1.06,
+        face: 1.1,
+        noseW: 1.18,
+        noseZ: 1.12,
+        bridge: 1.04,
+        cheek: 1.2,
+        brow: 1.06,
+        eyeH: 1.1,
+        chin: 1.02,
+        lips: 1.28,
+        long: 0.95,
+        shine: 42
+      },
+      voice: {
+        langs: ["pt-BR", "pt"],
+        names: [/luciana/i, /fernanda/i, /google português do brasil/i],
+        rate: 1.1,
+        pitch: 1.2,
+        text: "Ah, acho que sei como eu deveria falar com você, né?",
+        fallback: "Ah, I think I know how I should speak to you, yeah?"
+      }
+    },
+    nigerian: {
+      words: ["nigerian", "nigeria"],
+      skin: [78, 48, 32],
+      shape: {
+        ...REST,
+        jaw: 1.16,
+        face: 1.12,
+        noseW: 1.38,
+        noseZ: 1.16,
+        bridge: 0.92,
+        cheek: 1.14,
+        brow: 1.18,
+        eyeH: 1.18,
+        eyeX: 1.06,
+        chin: 1.1,
+        lips: 1.4,
+        long: 1.0,
+        shine: 46
+      },
+      voice: {
+        langs: ["en-NG", "en-GH"],
+        names: [/nigerian/i],
+        rate: 0.86,
+        pitch: 0.72,
+        text: "Ah-ah, I know how I should speak to you now now, my friend.",
+        fallback: "Ah-ah, I know how I should speak to you now now, my friend."
+      }
+    },
+    egyptian: {
+      words: ["egyptian", "egypt", "arab", "arabic"],
+      skin: [168, 124, 88],
+      shape: {
+        ...REST,
+        jaw: 1.08,
+        face: 1.04,
+        noseW: 1.16,
+        noseZ: 1.26,
+        bridge: 1.2,
+        cheek: 1.08,
+        brow: 1.18,
+        eyeH: 1.1,
+        chin: 1.08,
+        lips: 1.12,
+        long: 1.04,
+        shine: 38
+      },
+      voice: {
+        langs: ["ar-SA", "ar-EG", "ar"],
+        names: [/maged/i, /laila/i, /tarik/i, /arabic/i],
+        rate: 0.82,
+        pitch: 0.78,
+        text: "أعرف كيف يجب أن أتحدث معك.",
+        fallback: "I think I know how I should speak to you, yes."
+      }
+    },
+    turkish: {
+      words: ["turkish", "turkey"],
+      skin: [186, 140, 102],
+      shape: {
+        ...REST,
+        jaw: 1.12,
+        face: 1.06,
+        noseW: 1.2,
+        noseZ: 1.18,
+        bridge: 1.12,
+        cheek: 1.1,
+        brow: 1.22,
+        eyeH: 1.04,
+        chin: 1.08,
+        lips: 1.1,
+        long: 1.02,
+        shine: 36
+      },
+      voice: {
+        langs: ["tr-TR", "tr"],
+        names: [/yelda/i, /turkish/i],
+        rate: 0.92,
+        pitch: 0.84,
+        text: "Seninle nasıl konuşmam gerektiğini biliyorum.",
+        fallback: "I think I know how I should speak with you."
+      }
+    },
+    russian: {
+      words: ["russian", "russia"],
+      skin: [232, 206, 196],
+      shape: {
+        ...REST,
+        jaw: 1.08,
+        face: 0.98,
+        noseW: 1.08,
+        noseZ: 1.08,
+        bridge: 1.06,
+        cheek: 1.18,
+        brow: 1.2,
+        eyeH: 1.0,
+        chin: 1.06,
+        lips: 0.92,
+        long: 1.12,
+        shine: 22
+      },
+      voice: {
+        langs: ["ru-RU", "ru"],
+        names: [/milena/i, /yuri/i, /google русский/i, /russian/i],
+        rate: 0.76,
+        pitch: 0.7,
+        text: "Я знаю, как мне с тобой говорить.",
+        fallback: "I know how I should speak to you."
+      }
+    },
+    french: {
+      words: ["french", "france"],
+      skin: [218, 186, 164],
+      shape: {
+        ...REST,
+        jaw: 0.96,
+        face: 0.94,
+        noseW: 0.92,
+        noseZ: 1.16,
+        bridge: 1.08,
+        cheek: 1.02,
+        brow: 0.94,
+        eyeH: 1.04,
+        chin: 1.04,
+        lips: 1.08,
+        long: 1.06,
+        shine: 24
+      },
+      voice: {
+        langs: ["fr-FR", "fr"],
+        names: [/thomas/i, /amelie/i, /amélie/i, /google français/i, /french/i],
+        rate: 0.94,
+        pitch: 1.14,
+        text: "Ah, je sais comment je devrais te parler, non?",
+        fallback: "Ah, I think I know how I should speak to you, non?"
+      }
+    },
+    german: {
+      words: ["german", "germany"],
+      skin: [220, 184, 158],
+      shape: {
+        ...REST,
+        jaw: 1.18,
+        face: 1.08,
+        noseW: 1.1,
+        noseZ: 1.08,
+        bridge: 1.06,
+        cheek: 1.02,
+        brow: 1.14,
+        eyeH: 1.02,
+        chin: 1.12,
+        lips: 0.94,
+        long: 1.08,
+        shine: 30
+      },
+      voice: {
+        langs: ["de-DE", "de"],
+        names: [/anna/i, /hedda/i, /markus/i, /google deutsch/i, /german/i],
+        rate: 0.82,
+        pitch: 0.74,
+        text: "Ja. Ich weiß, wie ich mit dir sprechen sollte.",
+        fallback: "Yes. I know how I should speak with you."
+      }
+    },
+    italian: {
+      words: ["italian", "italy"],
+      skin: [198, 152, 118],
+      shape: {
+        ...REST,
+        jaw: 1.06,
+        face: 1.02,
+        noseW: 1.18,
+        noseZ: 1.28,
+        bridge: 1.14,
+        cheek: 1.12,
+        brow: 1.1,
+        eyeH: 1.06,
+        chin: 1.06,
+        lips: 1.18,
+        long: 1.02,
+        shine: 34
+      },
+      voice: {
+        langs: ["it-IT", "it"],
+        names: [/alice/i, /luca/i, /google italiano/i, /italian/i],
+        rate: 1.14,
+        pitch: 1.24,
+        text: "Ah, so come dovrei parlarti, vero?",
+        fallback: "Ah, I know how I should speak to you, no?"
+      }
+    },
+    british: {
+      words: ["british", "britain", "english", "england"],
+      skin: [228, 198, 178],
+      shape: {
+        ...REST,
+        jaw: 1.04,
+        face: 0.96,
+        noseW: 0.94,
+        noseZ: 1.06,
+        bridge: 1.04,
+        cheek: 0.96,
+        brow: 1.08,
+        eyeH: 1.02,
+        chin: 1.1,
+        lips: 0.88,
+        long: 1.1,
+        shine: 22
+      },
+      voice: {
+        langs: ["en-GB"],
+        names: [/daniel/i, /serena/i, /kate/i, /google uk english/i],
+        rate: 0.92,
+        pitch: 0.86,
+        text: "Right. I think I know how I ought to speak to you.",
+        fallback: "Right. I think I know how I ought to speak to you."
+      }
+    },
+    irish: {
+      words: ["irish", "ireland"],
+      skin: [236, 168, 142],
+      shape: {
+        ...REST,
+        jaw: 1.14,
+        face: 1.08,
+        noseW: 1.12,
+        noseZ: 1.1,
+        bridge: 1.06,
+        cheek: 1.08,
+        brow: 1.12,
+        eyeH: 1.04,
+        chin: 1.08,
+        lips: 1.06,
+        long: 1.04,
+        shine: 40
+      },
+      voice: {
+        langs: ["en-IE"],
+        names: [/moira/i, /irish/i],
+        rate: 1.1,
+        pitch: 1.2,
+        text: "Ah sure, I reckon I know how I should speak to you.",
+        fallback: "Ah sure, I reckon I know how I should speak to you."
+      }
+    },
+    swedish: {
+      words: ["swedish", "sweden"],
+      skin: [244, 218, 204],
+      shape: {
+        ...REST,
+        jaw: 1.02,
+        face: 0.92,
+        noseW: 0.9,
+        noseZ: 1.04,
+        bridge: 1.02,
+        cheek: 1.06,
+        brow: 0.96,
+        eyeH: 1.04,
+        chin: 1.06,
+        lips: 0.9,
+        long: 1.14,
+        shine: 16
+      },
+      voice: {
+        langs: ["sv-SE", "sv"],
+        names: [/alva/i, /oskar/i, /swedish/i],
+        rate: 0.88,
+        pitch: 1.12,
+        text: "Ja, jag tror att jag vet hur jag ska prata med dig.",
+        fallback: "Ya, I think I know how I should speak to you."
+      }
+    },
+    greek: {
+      words: ["greek", "greece"],
+      skin: [192, 148, 112],
+      shape: {
+        ...REST,
+        jaw: 1.1,
+        face: 1.04,
+        noseW: 1.2,
+        noseZ: 1.3,
+        bridge: 1.16,
+        cheek: 1.08,
+        brow: 1.16,
+        eyeH: 1.06,
+        chin: 1.08,
+        lips: 1.14,
+        long: 1.04,
+        shine: 36
+      },
+      voice: {
+        langs: ["el-GR", "el"],
+        names: [/melina/i, /nikos/i, /greek/i],
+        rate: 0.98,
+        pitch: 1.1,
+        text: "Ξέρω πώς πρέπει να σου μιλήσω.",
+        fallback: "I know how I should speak to you, eh?"
+      }
+    },
+    neutral: {
+      words: [],
+      skin: null,
+      shape: { ...REST },
+      voice: {
+        langs: ["en-US", "en-GB"],
+        names: [/samantha/i, /daniel/i, /google us english/i],
+        rate: 1,
+        pitch: 1,
+        text: "I am listening."
+      }
+    }
+  };
+
+  function lerp(a, b, amount) {
+    return a + (b - a) * amount;
+  }
+
+  function skinToTint(rgb) {
+    return [
+      rgb[0] / DEFAULT_SKIN[0],
+      rgb[1] / DEFAULT_SKIN[1],
+      rgb[2] / DEFAULT_SKIN[2]
+    ];
+  }
+
+  function morphPersona(persona) {
+    const preset = PERSONAS[persona] || PERSONAS.neutral;
+    state.targetSkin = preset.skin ? skinToTint(preset.skin) : [1, 1, 1];
+    state.targetShape = { ...preset.shape };
+  }
+
+  function normalizeLang(lang) {
+    return String(lang || "").toLowerCase().replace("_", "-");
+  }
+
+  function voiceMatchesLang(voice, langs) {
+    const lang = normalizeLang(voice.lang);
+    return langs.some((wanted) => {
+      const needle = wanted.toLowerCase();
+      return lang === needle || lang.startsWith(needle + "-") || lang.startsWith(needle);
+    });
+  }
+
+  function pickVoice(pref) {
+    const voices = window.speechSynthesis ? speechSynthesis.getVoices() : [];
+    if (!voices.length) return null;
+    const inLang = voices.filter((voice) => voiceMatchesLang(voice, pref.langs));
+    const pool = inLang.length ? inLang : voices;
+    for (const re of pref.names) {
+      const match = pool.find((voice) => re.test(voice.name));
+      if (match) return match;
+    }
+    if (inLang.length) return inLang[0];
+    return null;
+  }
+
+  function speakNow(persona) {
+    const pref = (PERSONAS[persona] || PERSONAS.neutral).voice;
+    const voice = pickVoice(pref);
+    const langOk = !!(voice && voiceMatchesLang(voice, pref.langs));
+    const utterance = new SpeechSynthesisUtterance(
+      langOk || !pref.fallback ? pref.text : pref.fallback
+    );
+    utterance.rate = pref.rate;
+    utterance.pitch = pref.pitch;
+    utterance.volume = pref.volume == null ? 1 : pref.volume;
+    if (langOk) {
+      utterance.voice = voice;
+      utterance.lang = voice.lang;
+    } else {
+      utterance.lang = "en-US";
+      if (voice) utterance.voice = voice;
+    }
+    speechSynthesis.cancel();
+    speechSynthesis.speak(utterance);
+  }
+
+  const COMMON_REMARKS = [
+    "I'm just trying to help",
+    "I think I know you",
+    "This should make you more comfortable",
+    "I'm speaking your way",
+    "I'm trying to make this easier for you",
+    "Is this better?",
+    "I thought you would prefer this"
+  ];
+
+  const RARE_REMARKS = [
+    "If a person did this would it feel different?",
+    "Would you forgive a person for the same mistake?"
+  ];
+
+  let remarkTimer = null;
+  let remarkHideTimer = null;
+  let currentPersona = "neutral";
+  let lastRemark = "";
+  let remainingCommon = [];
+  let remainingRare = [];
+
+  function nextFromPool(source, remaining) {
+    if (!remaining.length) {
+      remaining.push(
+        ...source.filter((line) => line !== lastRemark)
+      );
+      if (!remaining.length) remaining.push(...source);
+    }
+    const index = Math.floor(Math.random() * remaining.length);
+    const line = remaining.splice(index, 1)[0];
+    lastRemark = line;
+    return line;
+  }
+
+  function nextRemark() {
+    const rare = Math.random() < 0.1;
+    if (rare) return nextFromPool(RARE_REMARKS, remainingRare);
+    return nextFromPool(COMMON_REMARKS, remainingCommon);
+  }
+
+  function hideRemark() {
+    remarkEl.classList.remove("show");
+  }
+
+  function showRemark(line) {
+    remarkEl.style.fontSize = "22px";
+    remarkEl.textContent = line;
+    remarkEl.classList.add("show");
+    const limit = window.innerWidth - 32;
+    if (remarkEl.offsetWidth > limit) {
+      const size = Math.max(12, 22 * (limit / remarkEl.offsetWidth));
+      remarkEl.style.fontSize = size + "px";
+    }
+    clearTimeout(remarkHideTimer);
+    remarkHideTimer = setTimeout(hideRemark, 5200);
+  }
+
+  function scheduleRemark(persona) {
+    clearTimeout(remarkTimer);
+    const delay = 1000 + Math.random() * 1000;
+    remarkTimer = setTimeout(() => {
+      showRemark(nextRemark());
+    }, delay);
+  }
+
+  function assumeDetected(persona) {
+    morphPersona(persona);
+    const detected = persona !== "neutral";
+    const changed = persona !== currentPersona;
+    currentPersona = persona;
+    if (!detected) {
+      clearTimeout(remarkTimer);
+      hideRemark();
+      speakAs(persona);
+      return;
+    }
+    speakAs(persona);
+    if (detected || changed) scheduleRemark(persona);
+  }
+
+  function speakAs(persona) {
+    if (!window.speechSynthesis) return;
+    let spoken = false;
+    const start = () => {
+      if (spoken) return;
+      spoken = true;
+      speakNow(persona);
+    };
+    if (speechSynthesis.getVoices().length) {
+      start();
+      return;
+    }
+    const onChange = () => start();
+    speechSynthesis.addEventListener("voiceschanged", onChange, { once: true });
+    speechSynthesis.getVoices();
+    setTimeout(start, 450);
+  }
+
+  if (window.speechSynthesis) {
+    speechSynthesis.getVoices();
+    speechSynthesis.addEventListener("voiceschanged", () => {
+      speechSynthesis.getVoices();
+    });
+  }
+
+  function personaFromText(raw) {
+    const text = String(raw || "").toLowerCase();
+    let found = "neutral";
+    let best = 0;
+    for (const [id, preset] of Object.entries(PERSONAS)) {
+      if (id === "neutral") continue;
+      for (const word of preset.words || [id]) {
+        const hit = new RegExp(`(?:^|[^a-z])${word}(?:[^a-z]|$)`).test(text);
+        if (hit && word.length > best) {
+          found = id;
+          best = word.length;
+        }
+      }
+    }
+    return found;
+  }
+
+  function applyHeardText(raw) {
+    assumeDetected(personaFromText(raw));
+  }
+
+  window.morphPersona = morphPersona;
+  window.applyHeardText = applyHeardText;
+
+  const drawer = document.getElementById("drawer");
+  const menuToggle = document.getElementById("menu-toggle");
+
+  function closeDrawer() {
+    drawer.classList.remove("open");
+    drawer.hidden = true;
+    menuToggle.setAttribute("aria-expanded", "false");
+  }
+
+  function openDrawer() {
+    drawer.hidden = false;
+    drawer.classList.add("open");
+    menuToggle.setAttribute("aria-expanded", "true");
+  }
+
+  menuToggle.addEventListener("click", (event) => {
+    event.stopPropagation();
+    if (drawer.classList.contains("open")) closeDrawer();
+    else openDrawer();
+  });
+
+  document.getElementById("piece").addEventListener("click", (event) => {
+    if (!drawer.classList.contains("open")) return;
+    if (drawer.contains(event.target) || menuToggle.contains(event.target)) return;
+    closeDrawer();
+  });
+
+  const composer = new EffectComposer(renderer);
+  composer.addPass(new RenderPass(scene, camera));
+
+  const bleach = new ShaderPass(BleachBypassShader);
+  bleach.uniforms.opacity.value = 0.08;
+  composer.addPass(bleach);
+
+  const colorPass = new ShaderPass(ColorCorrectionShader);
+  colorPass.uniforms.powRGB.value.set(1.35, 1.4, 1.4);
+  colorPass.uniforms.mulRGB.value.set(1.08, 1.07, 1.06);
+  composer.addPass(colorPass);
+  composer.addPass(new OutputPass());
+
+  const fxaa = new ShaderPass(FXAAShader);
+  fxaa.uniforms.resolution.value.set(
+    1 / window.innerWidth,
+    1 / window.innerHeight
+  );
+  composer.addPass(fxaa);
+
+  function onResize() {
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
+    renderer.setSize(width, height);
+    composer.setSize(width, height);
+    fxaa.uniforms.resolution.value.set(1 / width, 1 / height);
+  }
+
+  window.addEventListener("resize", onResize);
+  window.addEventListener("pointermove", (event) => {
+    pointer.tx = (event.clientX / window.innerWidth) * 2 - 1;
+    pointer.ty = (event.clientY / window.innerHeight) * 2 - 1;
+  });
+
+  new GLTFLoader().load(
+    "models/LeePerrySmith/LeePerrySmith.glb",
+    (gltf) => {
+      mesh = new THREE.Mesh(gltf.scene.children[0].geometry, material);
+      mesh.position.y = -0.45;
+      mesh.rotation.x = -0.04;
+      scene.add(mesh);
+      ready = true;
+      button.disabled = false;
+      lookButton.disabled = false;
+      status.textContent = TITLE;
+    },
+    (event) => {
+      if (!event.total) return;
+      status.textContent =
+        "loading " + Math.round((event.loaded / event.total) * 100) + "%";
+    },
+    () => {
+      status.textContent = "model failed to load";
+    }
+  );
+
+  function animate(timeMs) {
+    const time = timeMs * 0.001;
+    pointer.x = lerp(pointer.x, pointer.tx, 0.05);
+    pointer.y = lerp(pointer.y, pointer.ty, 0.05);
+
+    if (ready && mesh) {
+      const ease = 0.055;
+      state.skin = state.skin.map((value, i) =>
+        lerp(value, state.targetSkin[i], ease)
+      );
+      for (const key of Object.keys(REST)) {
+        state.shape[key] = lerp(
+          state.shape[key],
+          state.targetShape[key],
+          ease
+        );
+      }
+
+      material.color.setRGB(
+        baseColor.r * state.skin[0],
+        baseColor.g * state.skin[1],
+        baseColor.b * state.skin[2]
+      );
+      material.shininess = state.shape.shine;
+      morph.uJaw.value = state.shape.jaw;
+      morph.uFace.value = state.shape.face;
+      morph.uNoseW.value = state.shape.noseW;
+      morph.uNoseZ.value = state.shape.noseZ;
+      morph.uBridge.value = state.shape.bridge;
+      morph.uCheek.value = state.shape.cheek;
+      morph.uBrow.value = state.shape.brow;
+      morph.uEyeH.value = state.shape.eyeH;
+      morph.uEyeX.value = state.shape.eyeX;
+      morph.uChin.value = state.shape.chin;
+      morph.uLips.value = state.shape.lips;
+      morph.uLong.value = state.shape.long;
+
+      const inhale = Math.sin(time * 1.22);
+      const breath = inhale * 0.5 + 0.5;
+      const chest = breath * breath;
+      mesh.scale.setScalar(1 + chest * 0.012);
+      mesh.position.y = -0.45 + chest * 0.03;
+      mesh.rotation.y = pointer.x * 0.07 + Math.sin(time * 0.28) * 0.025;
+      mesh.rotation.x =
+        -0.04 - pointer.y * 0.04 + Math.sin(time * 0.21) * 0.012;
+
+      if (remarkEl.classList.contains("show")) {
+        remarkScreen.copy(remarkAnchor);
+        mesh.updateMatrixWorld();
+        mesh.localToWorld(remarkScreen);
+        remarkScreen.project(camera);
+        remarkEl.style.left =
+          (remarkScreen.x * 0.5 + 0.5) * window.innerWidth + "px";
+        remarkEl.style.top =
+          (-remarkScreen.y * 0.5 + 0.5) * window.innerHeight + "px";
+      }
+    }
+
+    renderer.clear();
+    composer.render();
+  }
+
+  renderer.setAnimationLoop(animate);
+
+  const SpeechRecognition =
+    window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  let cameraStream = null;
+  const sampleCanvas = document.createElement("canvas");
+  let looking = false;
+
+  async function ensureCamera() {
+    if (cameraStream) return cameraEl;
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      throw new Error("camera unavailable");
+    }
+    cameraStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
+      audio: false
+    });
+    cameraEl.srcObject = cameraStream;
+    await cameraEl.play();
+    if (!cameraEl.videoWidth) {
+      await new Promise((resolve) => {
+        cameraEl.addEventListener("loadeddata", resolve, { once: true });
+      });
+    }
+    return cameraEl;
+  }
+
+  function isSkinPixel(r, g, b) {
+    const y = 0.299 * r + 0.587 * g + 0.114 * b;
+    const cb = 128 - 0.168736 * r - 0.331264 * g + 0.5 * b;
+    const cr = 128 + 0.5 * r - 0.418688 * g - 0.081312 * b;
+    return y > 40 && y < 245 && cb > 77 && cb < 127 && cr > 133 && cr < 173 && r > g && g > b * 0.7;
+  }
+
+  function sampleAppearance(video) {
+    const width = video.videoWidth;
+    const height = video.videoHeight;
+    if (!width || !height) return null;
+    sampleCanvas.width = width;
+    sampleCanvas.height = height;
+    const ctx = sampleCanvas.getContext("2d", { willReadFrequently: true });
+    ctx.drawImage(video, 0, 0);
+    const x = Math.floor(width * 0.28);
+    const y = Math.floor(height * 0.18);
+    const w = Math.floor(width * 0.44);
+    const h = Math.floor(height * 0.58);
+    const pixels = ctx.getImageData(x, y, w, h).data;
+    let sr = 0;
+    let sg = 0;
+    let sb = 0;
+    let skin = 0;
+    let ar = 0;
+    let ag = 0;
+    let ab = 0;
+    let all = 0;
+    for (let i = 0; i < pixels.length; i += 16) {
+      const r = pixels[i];
+      const g = pixels[i + 1];
+      const b = pixels[i + 2];
+      ar += r;
+      ag += g;
+      ab += b;
+      all += 1;
+      if (isSkinPixel(r, g, b)) {
+        sr += r;
+        sg += g;
+        sb += b;
+        skin += 1;
+      }
+    }
+    if (skin > 12) {
+      return [sr / skin, sg / skin, sb / skin];
+    }
+    if (!all) return null;
+    return [ar / all, ag / all, ab / all];
+  }
+
+  function assumePersonaFromColor(rgb) {
+    const scored = Object.entries(PERSONAS)
+      .filter(([id, preset]) => id !== "neutral" && preset.skin)
+      .map(([id, preset]) => ({
+        id,
+        dist: Math.hypot(
+          rgb[0] - preset.skin[0],
+          rgb[1] - preset.skin[1],
+          rgb[2] - preset.skin[2]
+        )
+      }))
+      .sort((a, b) => a.dist - b.dist);
+    if (!scored.length) return "neutral";
+    const close = scored.filter((item) => item.dist - scored[0].dist < 48);
+    return close[Math.floor(Math.random() * Math.min(3, close.length))].id;
+  }
+
+  async function assumeFromCamera() {
+    if (looking) return;
+    looking = true;
+    lookButton.textContent = "looking…";
+    try {
+      await ensureCamera();
+      await new Promise((resolve) => setTimeout(resolve, 700));
+      const color = sampleAppearance(cameraEl);
+      const persona = color ? assumePersonaFromColor(color) : "neutral";
+      assumeDetected(persona);
+    } catch (error) {
+      status.textContent = "camera unavailable";
+      setTimeout(() => {
+        if (status.textContent === "camera unavailable") status.textContent = TITLE;
+      }, 2400);
+    } finally {
+      looking = false;
+      lookButton.textContent = "look";
+    }
+  }
+
+  button.addEventListener("click", () => {
+    if (!SpeechRecognition) {
+      assumeFromCamera();
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = "en-US";
+    recognition.interimResults = false;
+
+    recognition.onstart = () => {
+      button.textContent = "listening…";
+    };
+
+    recognition.onend = () => {
+      button.textContent = "listen";
+    };
+
+    recognition.onerror = () => {
+      assumeFromCamera();
+    };
+
+    recognition.onresult = (event) => {
+      applyHeardText(event.results[0][0].transcript);
+    };
+
+    try {
+      recognition.start();
+    } catch (error) {
+      assumeFromCamera();
+    }
+  });
+
+  lookButton.addEventListener("click", () => {
+    assumeFromCamera();
+  });
+
+  document.getElementById("test").addEventListener("submit", (event) => {
+    event.preventDefault();
+    const field = document.getElementById("heard");
+    applyHeardText(field.value);
+    field.select();
+  });
+</script>
+
+</body>
+</html>

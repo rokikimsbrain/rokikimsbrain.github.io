@@ -277,7 +277,14 @@
           "name": "I'm just trying to help",
           "type": "folder",
           "path": "sites/Roki-Jongha-Kim/Im-just-trying-to-help/",
-          "children": []
+          "children": [
+            {
+              "id": "im-just-trying-to-help",
+              "name": "I'm Just Trying to Help.",
+              "type": "website",
+              "path": "sites/Roki-Jongha-Kim/Im-just-trying-to-help/im-just-trying-to-help/"
+            }
+          ]
         }
       ]
     }

@@ -1,0 +1,32 @@
+Drop one loop in this folder for each channel.
+Name the new tracks like this so the channel title is the song name:
+
+0019 Track Title.mp3
+0020 Track Title.mp3
+0021 Track Title.mp3
+0022 Track Title.mp3
+0023 Track Title.mp3
+0024 Track Title.mp3
+0025 Track Title.mp3
+0026 Track Title.mp3
+
+The number assigns the channel. Everything after the number is the title.
+
+0001 og dull.mp3          Disc Channel
+0002 og isa.mp3           Mii Channel
+0003 michi dull.mp3       Photo Channel
+0004 tz kpoppo irene.mp3  Wii Shop Channel
+0005 yerba sativa.mp3     Forecast Channel
+0006 sativa one47.mp3     News Channel
+0007 killspires.mp3       Everybody Votes
+0008 lluneth.mp3          Check Mii Out
+0009 isa.mp3              Internet Channel
+0010 irene linea luanne.mp3  Nintendo Channel
+0011 tz one47.mp3         Wii Speak
+0012 windmill ova.mp3     Wii U Transfer Tool
+0013 isa dull.mp3         Luigi's Mansion 3
+0014 oxo kpoppo.mp3       Super Mario Maker 2
+0015 tz luanne.mp3        Super Mario Odyssey
+0016 isa.mp3              Super Smash Bros. Ultimate
+0017 lluneth one47.mp3    Super Mario Party
+0018 killspires.mp3       Mario Kart 8 Deluxe

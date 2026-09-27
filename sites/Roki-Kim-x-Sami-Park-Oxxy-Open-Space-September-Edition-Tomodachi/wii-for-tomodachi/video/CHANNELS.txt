@@ -1,0 +1,23 @@
+Drop one video in this folder for each channel.
+Use these exact filenames. MP4 works best.
+The picture plays behind the visualizer. The channel's music stays the audio.
+
+disc.mp4                  Disc Channel
+mii.mp4                   Mii Channel
+photo.mp4                 Photo Channel
+shop.mp4                  Wii Shop Channel
+forecast.mp4              Forecast Channel
+news.mp4                  News Channel
+votes.mp4                 Everybody Votes
+check.mp4                 Check Mii Out
+internet.mp4              Internet Channel
+nintendo.mp4              Nintendo Channel
+speak.mp4                 Wii Speak
+transfer.mp4              Wii U Transfer Tool
+1.mp4                     Luigi's Mansion 3
+2.mp4                     Super Mario Maker 2
+3.mp4                     Super Mario Odyssey
+4.mp4                     Super Smash Bros. Ultimate
+5.mp4                     Super Mario Party
+6.mp4                     Mario Kart 8 Deluxe
+tracks.mp4                Channels 0019-0026 (shared)

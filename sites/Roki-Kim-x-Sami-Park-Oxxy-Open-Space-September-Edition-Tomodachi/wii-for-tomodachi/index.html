@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Wii for Tomodachi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/plaza.css?v=oxxy-guide1">
+</head>
+<body class="gate-open">
+  <div class="sky" aria-hidden="true"></div>
+
+  <button class="page-arrow left" id="arrowLeft" type="button" aria-label="Previous page">
+    <span></span>
+  </button>
+  <button class="page-arrow right" id="arrowRight" type="button" aria-label="Next page">
+    <span></span>
+  </button>
+  <div class="edge-meter left" id="meterLeft"></div>
+  <div class="edge-meter right" id="meterRight"></div>
+
+  <main class="stage" id="stage">
+    <div class="world" id="world"></div>
+  </main>
+
+  <footer class="dock">
+    <svg class="dock-wave" viewBox="0 0 1440 180" preserveAspectRatio="none" aria-hidden="true">
+      <path class="dock-wave-fill" d="M0 78 C 170 30, 300 24, 430 56 S 680 108, 820 110 S 1120 52, 1300 46 S 1390 58, 1440 70 L1440 180 L0 180 Z"/>
+      <path class="dock-wave-line" d="M0 78 C 170 30, 300 24, 430 56 S 680 108, 820 110 S 1120 52, 1300 46 S 1390 58, 1440 70"/>
+    </svg>
+    <div class="dock-row">
+      <div class="dock-left">
+        <button class="dock-btn wii-btn" id="wiiBtn" type="button" aria-label="Wii Menu">Wii</button>
+        <button class="sd-btn" id="sdBtn" type="button" aria-label="SD Card"></button>
+      </div>
+      <div class="dock-center">
+        <p class="clock" id="clock"></p>
+        <p class="dock-date" id="dockDate"></p>
+        <div class="dock-pips" id="pagePips" hidden></div>
+      </div>
+      <button class="dock-btn mail-btn" id="mailBtn" type="button" aria-label="Wii Message Board">
+        <svg class="mail-icon" viewBox="0 0 40 28" aria-hidden="true">
+          <rect x="2.5" y="5" width="35" height="20" rx="2.5" fill="none" stroke="#8aa0b0" stroke-width="2.6"/>
+          <path d="M4 7 L20 18 L36 7" fill="none" stroke="#8aa0b0" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="mail-badge">1</span>
+      </button>
+      <button class="mail-note" id="mailNote" type="button" hidden>1 new message</button>
+    </div>
+    <div class="hint" id="hint" hidden>Wave your hand. Pinch a channel to open it. Hold left or right to turn the page.</div>
+  </footer>
+
+  <video id="cam" class="cam-hidden" playsinline muted></video>
+
+  <div class="pointer" id="pointer" hidden>
+    <svg viewBox="0 0 64 64" aria-hidden="true">
+      <path class="hand-outline" d="M22 30 V16.5 a4.5 4.5 0 0 1 9 0 V28 m0-8.5 V14.5 a4.5 4.5 0 0 1 9 0 V30 m0-11.5 V16 a4.5 4.5 0 0 1 9 0 V34 m0-12.2 V22 a4.2 4.2 0 1 1 8.4 0 V38.5 c0 9.2-6.4 16.5-16.8 16.5 h-3.2 C26.2 55 18 48.4 18 39.2 V33.5 a5 5 0 0 1 10 0 V38"/>
+      <path class="hand-fill" d="M22 30 V16.5 a4.5 4.5 0 0 1 9 0 V28 m0-8.5 V14.5 a4.5 4.5 0 0 1 9 0 V30 m0-11.5 V16 a4.5 4.5 0 0 1 9 0 V34 m0-12.2 V22 a4.2 4.2 0 1 1 8.4 0 V38.5 c0 9.2-6.4 16.5-16.8 16.5 h-3.2 C26.2 55 18 48.4 18 39.2 V33.5 a5 5 0 0 1 10 0 V38"/>
+    </svg>
+    <span class="player-num">1</span>
+  </div>
+
+  <section class="gate" id="gate">
+    <div class="gate-hero">
+      <h1 class="channel-hero-title">Oxxy Open Space</h1>
+      <p class="gate-edition">September edition : Tomodachi</p>
+      <p class="gate-credit">Sami Park · Roki Jongha Kim · Elisa Bae</p>
+    </div>
+    <div class="gate-crowd" aria-hidden="true"></div>
+    <button class="crowd-hotspot" id="tomodachiHotspot" data-face="tomodachi" data-side="left" type="button" aria-label="Tomodachi">
+      <img class="crowd-pop" src="img/mii-tomodachi.png?v=oxxy-tomo3" alt="">
+      <span class="crowd-intro">Tomodachi</span>
+    </button>
+    <button class="crowd-hotspot" id="samiHotspot" data-face="sami" data-side="left" type="button" aria-label="Sami Park from Team Oxxy">
+      <img class="crowd-pop" src="img/mii-sami.png?v=oxxy-sami1" alt="">
+      <span class="crowd-intro">Sami Park from Team Oxxy</span>
+    </button>
+    <button class="crowd-hotspot" id="rokiHotspot" data-face="roki" type="button" aria-label="Roki Jongha Kim from team oxxy">
+      <img class="crowd-pop" src="img/mii-roki.png?v=oxxy-roki12" alt="">
+      <span class="crowd-intro">Roki Jongha Kim from team oxxy</span>
+    </button>
+    <button class="crowd-hotspot" id="elisaHotspot" data-face="elisa" type="button" aria-label="Elisa Bae from Team Oxxy">
+      <img class="crowd-pop" src="img/mii-elisa.png?v=oxxy-elisa3" alt="">
+      <span class="crowd-intro">Elisa Bae from Team Oxxy</span>
+    </button>
+    <div class="channel-pills">
+      <button class="wii-pill" id="startCam" type="button">Hand Tracker</button>
+      <button class="wii-pill" id="startMouse" type="button">Mouse</button>
+    </div>
+    <p class="gate-note" id="gateNote"></p>
+  </section>
+
+  <section class="hand-guide" id="handGuide" hidden>
+    <div class="hand-guide-card">
+      <p class="hand-guide-kicker">Hand Tracker</p>
+      <div class="hand-guide-slide is-on" data-step="0">
+        <div class="guide-art guide-art-move" aria-hidden="true">
+          <span class="guide-frame"></span>
+          <span class="guide-hand"></span>
+        </div>
+        <h2>Move your hand</h2>
+        <p>Hold one hand up to the camera. The Wii cursor follows it around the menu.</p>
+      </div>
+      <div class="hand-guide-slide" data-step="1" hidden>
+        <div class="guide-art guide-art-pinch" aria-hidden="true">
+          <span class="guide-channel"></span>
+          <span class="guide-pinch"></span>
+        </div>
+        <h2>Pinch to open</h2>
+        <p>Pinch your thumb and index finger over a channel to open it. Pinch again on Wii Menu to close it.</p>
+      </div>
+      <div class="hand-guide-slide" data-step="2" hidden>
+        <div class="guide-art guide-art-edge" aria-hidden="true">
+          <span class="guide-edge left"></span>
+          <span class="guide-edge right"></span>
+          <span class="guide-hand"></span>
+        </div>
+        <h2>Hold the edge</h2>
+        <p>Hold your hand at the left or right edge of the screen to turn the page.</p>
+      </div>
+      <div class="hand-guide-dots" id="handGuideDots" aria-hidden="true">
+        <span class="is-on"></span><span></span><span></span>
+      </div>
+      <div class="channel-pills">
+        <button class="wii-pill" id="handGuideBack" type="button">Back</button>
+        <button class="wii-pill" id="handGuideNext" type="button">Next</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="channel-screen" id="channelScreen" hidden>
+    <div class="channel-metal" aria-hidden="true"></div>
+    <video class="channel-video" id="channelVideo" muted loop playsinline hidden></video>
+    <canvas class="channel-viz" id="channelViz" aria-hidden="true"></canvas>
+    <canvas class="track-characters" id="trackCharacters" hidden></canvas>
+    <h1 class="channel-hero-title" id="channelTitle">Mii Channel</h1>
+    <div class="mii-crowd" id="channelCrowd" aria-hidden="true" hidden></div>
+    <div class="channel-pills">
+      <button class="wii-pill" id="backChannel" type="button">Back</button>
+      <button class="wii-pill" id="closeChannel" type="button">Wii Menu</button>
+      <button class="wii-pill" id="nextChannel" type="button">Next</button>
+    </div>
+  </section>
+
+  <section class="message-board" id="messageBoard" hidden>
+    <div class="channel-metal" aria-hidden="true"></div>
+    <div class="board-scroll">
+      <h1 class="channel-hero-title">Message Board</h1>
+      <article class="board-letter">
+        <h2>Intro</h2>
+        <p>The mission statement of Oxxy from what I perceive is to adulate and pedestal different forums of art. Oxxy aims to be the “tailor” that perfectly “hem” the “suit” (suit being art) to said artist’s needs.</p>
+        <p>What I aim to do with this exhibition with the space and manpower the team provides is helping make visuals for an online collective named Tomodachi.</p>
+
+        <h2>Tomo Socials</h2>
+        <p>Their soundcloud and instagram page:</p>
+        <p><a href="https://www.instagram.com/tomodachigroup/" target="_blank" rel="noopener">Instagram</a></p>
+        <p><a href="https://on.soundcloud.com/bloFwXbK6lqOHK9QuN" target="_blank" rel="noopener">SoundCloud</a></p>
+        <p>How their beats sound:</p>
+        <p><a href="https://soundcloud.com/tomo-chi/tomodachi-clips-vol-2?si=dea2b78d413a483f816cd2fb49cf96ff&amp;utm_source=clipboard&amp;utm_medium=text&amp;utm_campaign=social_sharing" target="_blank" rel="noopener">Tomodachi Clips Vol. 2</a></p>
+
+        <h2>Why Tomo?</h2>
+        <p>This is an online group that has a distinct, unique sound that cannot be quantified very easily. Personally when I listen to their beats, I feel motivated to try harder. They’re usually upbeat with the drums, but sometimes it can deviate into a more smooth atmosphere. But overall, the irregular drum patterns give their sound a very hectic vibe and I personally love it.</p>
+        <p>They currently use the design font of [Nintendo Wii], so the idea I had was to make an interactive visual where I would have a wide array of people react to their sounds which are already left field— but the main goal of the exhibition is to get people to experience something new but also to capture the vast range of human emotions.</p>
+        <p>While someone like me is already in the Rabbit Hole, the average student in Boston University is not someone who would listen to this kind of genre. But also, you find a couple of people who do actually listen to this music, and overall I just want to see how people react to new ideas. How does one react to change?</p>
+        <p>New ideas when presented to the general public tend to be met with ambivalent reactions because the zeitgeist at times does not know how to interpret the grey zones. They like things to be white and black. It’s either I like it or I don’t for the collective. But when you present novel things and experiences to university students, I really want to aim to capture the emotions that go behind said people.</p>
+        <p>I think that humans as a whole are very unique. We are not beings that can be categorized and quantified easily. Learning how humans live is almost like a never ending videogame. It’s just so intriguing to see how people act. Sure, we can be evil. But we can also be altruistic. We can be lazy and motivated. This consistent contradiction of our being just makes us humans. And because of this, the essence of humanity for me is a charcuterie board of cheeses and meats that never disappoint, and I kind of want to capture that said amorphous feeling.</p>
+
+        <h2>Purpose</h2>
+        <p>I think this project does three things. It first puts a highly pro-social narrative onto art. The artists are collaborating with each other to then let other humans react to art made by humans:</p>
+        <p>Oxxy is helping Words with a vision that includes Tomodachi.</p>
+        <p>But also, this project inherently kind of captures the telos or core values of every group:</p>
+        <p>Oxxy wants to pedestal creators and artists. Words main tenant is to build good community. And Tomodachi’s motto is “Let’s all be friends”.</p>
+        <p>And I personally think that Tomodachi deserves more recognition which is why I want to work on visuals for the group. And with said extra manpower, I think I can use Oxxy as a catalyst to help make this vision I have greater.</p>
+
+        <h2>Actualization</h2>
+        <p>For the visual, we first have a menu screen that says the Word tomodachi. It then goes to replicated menu screen that resembles the nintendo Wii menu:</p>
+        <p>We will have the first menu slide be a tutorial demo that explains how the website/interactive website works.</p>
+        <p>The visual will have a camera that tracks your hand and then have it open and close said wii panels.</p>
+        <p><a href="https://fishesandwifi.github.io" target="_blank" rel="noopener">fishesandwifi.github.io</a></p>
+        <p>After we explain said concept, we will have the person interact with the visual on the projection.</p>
+        <p>When they open said sound, it will play a beat snippet from Tomodachi.</p>
+        <p>They can close the visual, listen to it fully, and we take a hands off approach to their interaction.</p>
+      </article>
+    </div>
+    <div class="channel-pills">
+      <button class="wii-pill" id="closeBoard" type="button">Wii Menu</button>
+    </div>
+  </section>
+
+  <script type="module" src="js/plaza.js?v=oxxy-guide1"></script>
+</body>
+</html>

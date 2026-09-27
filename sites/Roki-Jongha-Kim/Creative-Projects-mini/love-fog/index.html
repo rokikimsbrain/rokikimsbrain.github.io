@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cold Glass</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: #000;
+      color: #f4f7fb;
+      font-family: system-ui, sans-serif;
+    }
+
+    #stage {
+      position: fixed;
+      inset: 0;
+      overflow: hidden;
+      background: #000;
+      cursor: crosshair;
+      touch-action: none;
+      user-select: none;
+    }
+
+    #cam {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1);
+      background: #000;
+    }
+
+    #fog {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    #start {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 2;
+      border: 0;
+      padding: 14px 22px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.94);
+      color: #1a1a1a;
+      font: 500 14px/1 system-ui, sans-serif;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+
+    #start[hidden] { display: none; }
+
+    #hint {
+      position: absolute;
+      left: 50%;
+      bottom: 28px;
+      transform: translateX(-50%);
+      z-index: 2;
+      margin: 0;
+      max-width: min(640px, calc(100% - 32px));
+      text-align: center;
+      font-size: 15px;
+      letter-spacing: 0.01em;
+      color: rgba(255, 255, 255, 0.88);
+      text-shadow: 0 1px 8px rgba(0, 0, 0, 0.65);
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="stage">
+    <video id="cam" playsinline muted></video>
+    <canvas id="fog"></canvas>
+    <button id="start" type="button">Start camera</button>
+    <p id="hint">Open your mouth and fog appears. Close it and the fog clears.</p>
+  </div>
+
+  <script type="module">
+    const WASM = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/wasm";
+    const FACE_MODEL = "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
+    const HAND_MODEL = "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task";
+
+    const stage = document.getElementById("stage");
+    const video = document.getElementById("cam");
+    const fogView = document.getElementById("fog");
+    const startBtn = document.getElementById("start");
+    const hint = document.getElementById("hint");
+
+    const fogCtx = fogView.getContext("2d");
+    const mask = document.createElement("canvas");
+    const maskCtx = mask.getContext("2d");
+    const strokes = document.createElement("canvas");
+    const strokesCtx = strokes.getContext("2d");
+    const frost = document.createElement("canvas");
+    const frostCtx = frost.getContext("2d");
+
+    let faceLandmarker = null;
+    let handLandmarker = null;
+    let modelsPromise = null;
+    let cameraOn = false;
+    let faceClock = 0;
+    let handClock = 0;
+    let width = 0;
+    let height = 0;
+    let lastFrame = performance.now();
+    let hintKey = "";
+    let keyBreath = false;
+    let pointerDown = false;
+    let pointer = null;
+    let hasDrawn = false;
+    let fogLevel = 0;
+    let lastFingerDraw = null;
+
+    const breath = {
+      live: false,
+      seenAt: 0,
+      mx: 0.5,
+      my: 0.45,
+      intensity: 0,
+      burst: 0,
+      jawBase: null,
+      lipBase: null,
+      mouthOpen: false,
+    };
+
+    const finger = {
+      active: false,
+      drawing: false,
+      seenAt: 0,
+      heldSince: 0,
+      anchorX: 0,
+      anchorY: 0,
+      x: 0,
+      y: 0,
+      tx: 0,
+      ty: 0,
+      radius: 5,
+      tr: 5,
+    };
+
+    function smoothstep(edge0, edge1, x) {
+      const t = Math.min(1, Math.max(0, (x - edge0) / (edge1 - edge0)));
+      return t * t * (3 - 2 * t);
+    }
+
+    function clamp(v, a, b) {
+      return Math.max(a, Math.min(b, v));
+    }
+
+    function shapeScore(blend, name) {
+      if (!blend) return 0;
+      const row = blend.categories.find((category) => category.categoryName === name);
+      return row ? row.score : 0;
+    }
+
+    function setHint(key, text) {
+      if (key === hintKey) return;
+      hintKey = key;
+      hint.textContent = text;
+    }
+
+    function cssPx(n) {
+      const rect = stage.getBoundingClientRect();
+      return n * (width / Math.max(1, rect.width));
+    }
+
+    function tipRadius() {
+      return Math.max(3, cssPx(8));
+    }
+
+    function resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.75);
+      const rect = stage.getBoundingClientRect();
+      const w = Math.max(2, Math.round(rect.width * dpr));
+      const h = Math.max(2, Math.round(rect.height * dpr));
+      if (w === width && h === height) return;
+
+      const previous = document.createElement("canvas");
+      previous.width = mask.width;
+      previous.height = mask.height;
+      if (mask.width && mask.height) previous.getContext("2d").drawImage(mask, 0, 0);
+      const previousStrokes = document.createElement("canvas");
+      previousStrokes.width = strokes.width;
+      previousStrokes.height = strokes.height;
+      if (strokes.width && strokes.height) previousStrokes.getContext("2d").drawImage(strokes, 0, 0);
+
+      width = w;
+      height = h;
+      fogView.width = w;
+      fogView.height = h;
+      mask.width = w;
+      mask.height = h;
+      strokes.width = w;
+      strokes.height = h;
+      frost.width = w;
+      frost.height = h;
+      paintFrost();
+
+      if (previous.width > 2) maskCtx.drawImage(previous, 0, 0, w, h);
+      if (previousStrokes.width > 2) strokesCtx.drawImage(previousStrokes, 0, 0, w, h);
+      lastFingerDraw = null;
+    }
+
+    function paintFrost() {
+      frostCtx.clearRect(0, 0, width, height);
+      frostCtx.fillStyle = "rgba(255, 255, 255, 1)";
+      frostCtx.fillRect(0, 0, width, height);
+      const grain = document.createElement("canvas");
+      grain.width = Math.max(2, Math.round(width / 4));
+      grain.height = Math.max(2, Math.round(height / 4));
+      const grainCtx = grain.getContext("2d");
+      const image = grainCtx.createImageData(grain.width, grain.height);
+      for (let i = 0; i < image.data.length; i += 4) {
+        const n = 214 + Math.random() * 41;
+        image.data[i] = n;
+        image.data[i + 1] = n;
+        image.data[i + 2] = Math.min(255, n + 6);
+        image.data[i + 3] = 55 + Math.random() * 40;
+      }
+      grainCtx.putImageData(image, 0, 0);
+      frostCtx.drawImage(grain, 0, 0, width, height);
+    }
+
+    function coverPlacement() {
+      const vw = video.videoWidth || 1;
+      const vh = video.videoHeight || 1;
+      const scale = Math.max(width / vw, height / vh);
+      const dw = vw * scale;
+      const dh = vh * scale;
+      return {
+        dx: (width - dw) / 2,
+        dy: (height - dh) / 2,
+        dw,
+        dh,
+      };
+    }
+
+    function landmarkToCanvas(nx, ny) {
+      const { dx, dy, dw, dh } = coverPlacement();
+      return {
+        x: width - dx - nx * dw,
+        y: dy + ny * dh,
+      };
+    }
+
+    function stampFog(x, y, radius, amount) {
+      if (amount <= 0.001 || radius <= 1) return;
+      const g = maskCtx.createRadialGradient(x, y, radius * 0.05, x, y, radius);
+      const alpha = clamp(amount, 0, 0.95);
+      g.addColorStop(0, `rgba(255,255,255,${alpha})`);
+      g.addColorStop(0.62, `rgba(255,255,255,${alpha * 0.82})`);
+      g.addColorStop(1, "rgba(255,255,255,0)");
+      maskCtx.globalCompositeOperation = "source-over";
+      maskCtx.fillStyle = g;
+      maskCtx.beginPath();
+      maskCtx.arc(x, y, radius, 0, Math.PI * 2);
+      maskCtx.fill();
+    }
+
+    function fogThickEnough() {
+      return fogLevel > 0.12;
+    }
+
+    function wipe(x, y, radius) {
+      if (!fogThickEnough()) return;
+      const r = Math.max(1.6, radius);
+      strokesCtx.globalCompositeOperation = "source-over";
+      const mark = strokesCtx.createRadialGradient(x, y, r * 0.2, x, y, r);
+      mark.addColorStop(0, "rgba(255,255,255,1)");
+      mark.addColorStop(0.78, "rgba(255,255,255,0.95)");
+      mark.addColorStop(1, "rgba(255,255,255,0)");
+      strokesCtx.fillStyle = mark;
+      strokesCtx.beginPath();
+      strokesCtx.arc(x, y, r, 0, Math.PI * 2);
+      strokesCtx.fill();
+      hasDrawn = true;
+    }
+
+    function strokeWipe(from, to, radius) {
+      const dist = Math.hypot(to.x - from.x, to.y - from.y);
+      const steps = clamp(Math.ceil(dist / Math.max(1, radius * 0.45)), 1, 40);
+      for (let i = 1; i <= steps; i++) {
+        const t = i / steps;
+        wipe(from.x + (to.x - from.x) * t, from.y + (to.y - from.y) * t, radius);
+      }
+    }
+
+    function updateFog(dt) {
+      const open = keyBreath ? 0.75 : breath.intensity;
+      if (open > 0.06) {
+        const spot = breath.live
+          ? landmarkToCanvas(breath.mx, breath.my)
+          : { x: width * 0.5, y: height * 0.46 };
+        const radius = Math.min(width, height) * (0.16 + open * 0.42);
+        const dose = open * dt * 3.4;
+        stampFog(spot.x, spot.y, radius * 0.55, dose * 1.35);
+        stampFog(spot.x, spot.y, radius, dose * 0.7);
+        maskCtx.globalCompositeOperation = "source-over";
+        maskCtx.fillStyle = `rgba(255,255,255,${dose * open * 0.45})`;
+        maskCtx.fillRect(0, 0, width, height);
+        fogLevel = Math.min(1, fogLevel + open * dt * 1.4);
+      } else {
+        fogLevel = Math.max(0, fogLevel - dt * 0.045);
+        if (fogLevel === 0) {
+          maskCtx.globalCompositeOperation = "source-over";
+          maskCtx.clearRect(0, 0, width, height);
+          strokesCtx.globalCompositeOperation = "source-over";
+          strokesCtx.clearRect(0, 0, width, height);
+        }
+      }
+    }
+
+    function compositeFog() {
+      fogCtx.setTransform(1, 0, 0, 1, 0, 0);
+      fogCtx.globalCompositeOperation = "source-over";
+      fogCtx.clearRect(0, 0, width, height);
+      fogCtx.globalAlpha = fogLevel * 0.88;
+      fogCtx.drawImage(frost, 0, 0);
+      fogCtx.globalAlpha = 1;
+      fogCtx.globalCompositeOperation = "destination-in";
+      fogCtx.drawImage(mask, 0, 0);
+      fogCtx.globalCompositeOperation = "destination-out";
+      fogCtx.globalAlpha = fogLevel;
+      fogCtx.drawImage(strokes, 0, 0);
+      fogCtx.globalAlpha = 1;
+      fogCtx.globalCompositeOperation = "source-over";
+    }
+
+    function updateFinger(dt) {
+      const now = performance.now();
+      if (now - finger.seenAt > 900) {
+        finger.active = false;
+        finger.drawing = false;
+        finger.hasTarget = false;
+        lastFingerDraw = null;
+        return;
+      }
+
+      const follow = 1 - Math.exp(-12 * dt);
+      if (!finger.active) {
+        finger.x = finger.tx;
+        finger.y = finger.ty;
+        finger.radius = finger.tr;
+        finger.active = true;
+        finger.drawing = false;
+        finger.anchorX = finger.x;
+        finger.anchorY = finger.y;
+        lastFingerDraw = null;
+        return;
+      }
+
+      finger.x += (finger.tx - finger.x) * follow;
+      finger.y += (finger.ty - finger.y) * follow;
+      finger.radius = finger.tr;
+      const point = { x: finger.x, y: finger.y };
+
+      if (!fogThickEnough()) {
+        finger.drawing = false;
+        finger.anchorX = point.x;
+        finger.anchorY = point.y;
+        lastFingerDraw = null;
+        return;
+      }
+
+      if (!finger.drawing) {
+        const travel = Math.hypot(point.x - finger.anchorX, point.y - finger.anchorY);
+        if (travel < cssPx(6)) return;
+        finger.drawing = true;
+        wipe(point.x, point.y, finger.radius);
+        lastFingerDraw = point;
+        return;
+      }
+
+      const dist = Math.hypot(point.x - lastFingerDraw.x, point.y - lastFingerDraw.y);
+      if (dist < cssPx(1.5)) return;
+      if (dist > cssPx(160)) {
+        lastFingerDraw = point;
+        return;
+      }
+      strokeWipe(lastFingerDraw, point, finger.radius);
+      lastFingerDraw = point;
+    }
+
+    function stagePoint(event) {
+      const rect = stage.getBoundingClientRect();
+      return {
+        x: (event.clientX - rect.left) * (width / rect.width),
+        y: (event.clientY - rect.top) * (height / rect.height),
+      };
+    }
+
+    function dist3(a, b) {
+      return Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
+    }
+
+    function indexPose(landmarks) {
+      const wrist = landmarks[0];
+      const tip = landmarks[8];
+      const pip = landmarks[6];
+      const middle = landmarks[12];
+      const reach = dist3(tip, wrist);
+      const extension = reach / (dist3(pip, wrist) + 0.0001);
+      if (extension < 1.06 && tip.z > pip.z) return 0;
+      const lead = reach / (dist3(middle, wrist) + 0.0001);
+      return extension + Math.max(0, lead - 0.85) + (tip.z < pip.z ? 0.35 : 0);
+    }
+
+    function readFace(result) {
+      const landmarks = result.faceLandmarks?.[0];
+      if (!landmarks) {
+        breath.live = false;
+        breath.intensity = 0;
+        return;
+      }
+
+      const upper = landmarks[13];
+      const lower = landmarks[14];
+      const left = landmarks[78];
+      const right = landmarks[308];
+      const mouthWidth = Math.hypot(left.x - right.x, left.y - right.y) || 0.001;
+      const mouthOpen = Math.hypot(upper.x - lower.x, upper.y - lower.y) / mouthWidth;
+      const blend = result.faceBlendshapes?.[0];
+      const jaw = shapeScore(blend, "jawOpen");
+      const lips = mouthOpen;
+
+      if (breath.jawBase == null) breath.jawBase = jaw;
+      if (breath.lipBase == null) breath.lipBase = lips;
+      if (jaw < breath.jawBase + 0.04 && lips < breath.lipBase + 0.035) {
+        breath.jawBase += (jaw - breath.jawBase) * 0.08;
+        breath.lipBase += (lips - breath.lipBase) * 0.08;
+      }
+
+      const jawDelta = jaw - breath.jawBase;
+      const lipDelta = lips - breath.lipBase;
+      const raw = Math.max(0, jawDelta, lipDelta * 1.35);
+      if (breath.mouthOpen) breath.mouthOpen = raw > 0.045;
+      else breath.mouthOpen = raw > 0.1;
+      const openness = breath.mouthOpen ? clamp(raw / 0.48, 0, 1) : 0;
+      breath.intensity += (openness - breath.intensity) * (breath.mouthOpen ? 0.45 : 0.7);
+
+      const mx = (upper.x + lower.x) / 2;
+      const my = (upper.y + lower.y) / 2;
+      breath.live = true;
+      breath.seenAt = performance.now();
+      breath.mx += (mx - breath.mx) * 0.35;
+      breath.my += (my - breath.my) * 0.35;
+    }
+
+    function readHand(result) {
+      const hands = result.landmarks || [];
+      const handed = result.handedness || result.handednesses || [];
+      let best = null;
+      let bestScore = 0;
+      for (let i = 0; i < hands.length; i++) {
+        const score = handed[i]?.[0]?.score;
+        if (score != null && score < 0.5) continue;
+        const pose = indexPose(hands[i]);
+        if (pose > bestScore) {
+          bestScore = pose;
+          best = hands[i];
+        }
+      }
+      if (!best) {
+        return;
+      }
+
+      const now = performance.now();
+      finger.seenAt = now;
+      const point = landmarkToCanvas(best[8].x, best[8].y);
+      if (!finger.hasTarget) {
+        finger.tx = point.x;
+        finger.ty = point.y;
+        finger.hasTarget = true;
+      } else {
+        finger.tx += (point.x - finger.tx) * 0.85;
+        finger.ty += (point.y - finger.ty) * 0.85;
+      }
+      finger.tr = tipRadius();
+    }
+
+    let lastInferAt = 0;
+    let inferTick = 0;
+
+    function infer(now) {
+      if (!cameraOn || video.readyState < 2 || !video.videoWidth) return;
+      if (!faceLandmarker || !handLandmarker) return;
+      inferTick += 1;
+      const runFace = inferTick % 3 === 0;
+      if (runFace) {
+        faceClock = Math.max(now, faceClock + 1);
+        try {
+          readFace(faceLandmarker.detectForVideo(video, faceClock));
+        } catch (error) {
+          console.warn(error);
+        }
+      } else {
+        handClock = Math.max(now, handClock + 1);
+        try {
+          readHand(handLandmarker.detectForVideo(video, handClock));
+        } catch (error) {
+          console.warn(error);
+        }
+      }
+    }
+
+    async function createLandmarker(fileset, Task, model, options) {
+      try {
+        return await Task.createFromOptions(fileset, {
+          baseOptions: { modelAssetPath: model, delegate: "GPU" },
+          runningMode: "VIDEO",
+          ...options,
+        });
+      } catch (gpuError) {
+        console.warn(gpuError);
+        return Task.createFromOptions(fileset, {
+          baseOptions: { modelAssetPath: model, delegate: "CPU" },
+          runningMode: "VIDEO",
+          ...options,
+        });
+      }
+    }
+
+    function loadModels() {
+      if (!modelsPromise) {
+        modelsPromise = (async () => {
+          const vision = await import("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1");
+          const fileset = await vision.FilesetResolver.forVisionTasks(WASM);
+          faceLandmarker = await createLandmarker(fileset, vision.FaceLandmarker, FACE_MODEL, {
+            numFaces: 1,
+            outputFaceBlendshapes: true,
+            outputFacialTransformationMatrixes: false,
+          });
+          handLandmarker = await createLandmarker(fileset, vision.HandLandmarker, HAND_MODEL, {
+            numHands: 1,
+            minHandDetectionConfidence: 0.45,
+            minHandPresenceConfidence: 0.4,
+            minTrackingConfidence: 0.4,
+          });
+        })();
+      }
+      return modelsPromise;
+    }
+
+    async function startCamera() {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error("This browser has no camera access.");
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: {
+          facingMode: "user",
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+        },
+      });
+      video.srcObject = stream;
+      await video.play();
+      cameraOn = true;
+    }
+
+    function refreshHint() {
+      if (!cameraOn && hintKey === "error") return;
+      if (!cameraOn) {
+        setHint("intro", "Open your mouth and fog appears. Close it and the fog clears.");
+        return;
+      }
+      if (!faceLandmarker) {
+        setHint("loading", "Starting the camera…");
+        return;
+      }
+      const faceHere = performance.now() - breath.seenAt < 500;
+      if (!faceHere) {
+        setHint("face", "Step into the camera.");
+        return;
+      }
+      if (fogLevel < 0.4) {
+        setHint("breath", "Open your mouth and fog appears. Close it and the fog clears.");
+        return;
+      }
+      if (!hasDrawn) {
+        setHint("draw", "Draw through the fog with your fingertip.");
+        return;
+      }
+      setHint("again", "Open your mouth again and the fog returns.");
+    }
+
+    function frame(now) {
+      requestAnimationFrame(frame);
+      const dt = Math.min(0.05, (now - lastFrame) / 1000);
+      lastFrame = now;
+      if (!width) return;
+      if (cameraOn && now - lastInferAt > 45) {
+        lastInferAt = now;
+        infer(now);
+      }
+      updateFog(dt);
+      updateFinger(dt);
+      compositeFog();
+      if (finger.active && fogThickEnough()) {
+        const r = finger.radius;
+        fogCtx.beginPath();
+        fogCtx.arc(finger.x, finger.y, r, 0, Math.PI * 2);
+        fogCtx.strokeStyle = "rgba(255,255,255,0.95)";
+        fogCtx.lineWidth = Math.max(1.5, cssPx(1.5));
+        fogCtx.stroke();
+      }
+      refreshHint();
+    }
+
+    stage.addEventListener("pointerdown", (event) => {
+      if (event.target === startBtn) return;
+      if (event.button != null && event.button !== 0) return;
+      pointerDown = true;
+      pointer = stagePoint(event);
+      wipe(pointer.x, pointer.y, tipRadius());
+      try { stage.setPointerCapture(event.pointerId); } catch (error) { /* synthetic events */ }
+    });
+    stage.addEventListener("pointermove", (event) => {
+      if (!pointerDown) return;
+      const next = stagePoint(event);
+      if (pointer) strokeWipe(pointer, next, tipRadius());
+      pointer = next;
+    });
+    function endPointer() {
+      pointerDown = false;
+      pointer = null;
+    }
+    stage.addEventListener("pointerup", endPointer);
+    stage.addEventListener("pointercancel", endPointer);
+
+    window.addEventListener("keydown", (event) => {
+      if (event.key === "b" || event.key === "B") keyBreath = true;
+    });
+    window.addEventListener("keyup", (event) => {
+      if (event.key === "b" || event.key === "B") keyBreath = false;
+    });
+    window.addEventListener("blur", () => {
+      keyBreath = false;
+    });
+
+    startBtn.addEventListener("click", async () => {
+      startBtn.disabled = true;
+      startBtn.textContent = "Starting";
+      setHint("loading", "Starting the camera…");
+      const cameraPromise = startCamera().catch((error) => error);
+      try {
+        await loadModels();
+      } catch (error) {
+        console.error(error);
+        setHint("error", "Tracking could not load. Drag to draw, and hold B to fog the view.");
+        startBtn.hidden = true;
+        return;
+      }
+      const cameraError = await cameraPromise;
+      if (cameraError instanceof Error) {
+        console.error(cameraError);
+        setHint("error", "Camera blocked. Drag to draw, and hold B to fog the view.");
+        startBtn.hidden = true;
+        return;
+      }
+      startBtn.hidden = true;
+      hintKey = "";
+    });
+
+    new ResizeObserver(() => resize()).observe(stage);
+    resize();
+    requestAnimationFrame(frame);
+    loadModels().catch((error) => console.error(error));
+  </script>
+</body>
+</html>

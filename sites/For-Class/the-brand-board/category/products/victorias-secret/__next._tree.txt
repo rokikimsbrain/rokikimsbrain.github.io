@@ -1,0 +1,9 @@
+:HL["/sites/Roki-Jongha-Kim/the-brand-board/_next/static/chunks/0j8513uqcju6l.css","style"]
+:HL["/sites/Roki-Jongha-Kim/the-brand-board/_next/static/media/03bda585a99c6450-s.p.32sris142tqlb.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
+:HL["/sites/Roki-Jongha-Kim/the-brand-board/_next/static/media/caa3a2e1cccd8315-s.p.0wgildi0cnwt9.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
+5:[["children",{"s":"__PAGE__","h":160}]]
+4:[["children",{"s":{"n":"topic","t":"d","k":"victorias-secret","s":[]},"h":96,"c":"$Q5"}]]
+3:[["children",{"s":{"n":"slug","t":"d","k":"products","s":[]},"h":96,"c":"$Q4"}]]
+2:[["children",{"s":"category","h":96,"c":"$Q3"}]]
+1:[["children",{"s":"(stage)","h":96,"c":"$Q2"}]]
+0:{"b":"5AJ52MGilhqXYgdfv7wzH","t":{"t":{"s":"","h":84,"c":"$Q1"}}}

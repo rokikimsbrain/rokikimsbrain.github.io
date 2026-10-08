@@ -307,6 +307,13 @@
           "path": "sites/Roki-Kim-x-Sami-Park-Oxxy-Open-Space-September-Edition-Tomodachi/wii-for-tomodachi/"
         }
       ]
+    },
+    {
+      "id": "for-class",
+      "name": "For Class",
+      "type": "folder",
+      "path": "sites/For-Class/",
+      "children": []
     }
   ]
 }

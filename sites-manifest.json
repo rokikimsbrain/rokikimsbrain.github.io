@@ -313,14 +313,7 @@
       "name": "For Class",
       "type": "folder",
       "path": "sites/For-Class/",
-      "children": [
-        {
-          "id": "the-brand-board",
-          "name": "The Brand Board",
-          "type": "website",
-          "path": "sites/For-Class/the-brand-board/"
-        }
-      ]
+      "children": []
     }
   ]
 }

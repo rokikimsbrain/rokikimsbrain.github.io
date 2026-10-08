@@ -1,0 +1,9 @@
+:HL["/sites/For-Class/the-brand-board/next-static/static/chunks/0j8513uqcju6l.css","style"]
+:HL["/sites/For-Class/the-brand-board/next-static/static/media/03bda585a99c6450-s.p.32sris142tqlb.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
+:HL["/sites/For-Class/the-brand-board/next-static/static/media/caa3a2e1cccd8315-s.p.0wgildi0cnwt9.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
+5:[["children",{"s":"__PAGE__","h":160}]]
+4:[["children",{"s":{"n":"topic","t":"d","k":"two-corporations","s":[]},"h":96,"c":"$Q5"}]]
+3:[["children",{"s":{"n":"slug","t":"d","k":"branding","s":[]},"h":96,"c":"$Q4"}]]
+2:[["children",{"s":"category","h":96,"c":"$Q3"}]]
+1:[["children",{"s":"(stage)","h":96,"c":"$Q2"}]]
+0:{"b":"gjbpvGnsyfSdF3CZkI6MC","t":{"t":{"s":"","h":84,"c":"$Q1"}}}
